@@ -1,0 +1,86 @@
+#viewport { width: 1280px; height: 720px; background: rgba(0,0,0,0.5); }
+
+.timeshift-player {
+	width: 959px;
+	height: 62px;
+	background: url("./img/player_back.png") no-repeat;
+	position: absolute;
+	bottom: 52px;
+	left: 162px;
+}
+
+.timeshift-player > div { float: left; }
+
+.timeshift-player .large {
+	width: 72px;
+	height: 53px;
+	background: url("./img/player_large_back.png") no-repeat;
+}
+
+.timeshift-player .large .symbol { width: 72px; height: 53px; }
+.timeshift-player .small .symbol { width: 54px; height: 53px; }
+
+.timeshift-player .large.aria-focus { background: url("./img/player_large_back_active.png") no-repeat; }
+.timeshift-player .small.aria-focus { background: url("./img/player_small_back_active.png") no-repeat; }
+
+.timeshift-player .small {
+	width: 54px;
+	height: 53px;
+	background: url("./img/player_small_back.png") no-repeat;
+	margin: 4px 0 0 3px;
+}
+
+.timeshift-player .play-pause { margin: 4px 0 0 7px; }
+.timeshift-player .status { margin: 20px 0 0 6px; }
+.timeshift-player .time { background: url("./img/player_icon_clock.png") no-repeat; font-weight: bold; font-size: 14px; color: white; margin: 22px 11px 0 6px; padding-left: 25px; }
+
+.timeshift-player .play-pause .symbol { background: url("./img/player_icon_pause.png") no-repeat 2px 3px; }
+.timeshift-player .play-pause.on .symbol { background: url("./img/player_icon_play.png") no-repeat 2px 3px; }
+.timeshift-player .gotobookmark .symbol { background: url("./img/player_icon_gotobookmark.png") no-repeat 2px 3px; }
+.timeshift-player .bookmark .symbol { background: url("./img/player_icon_bookmark.png") no-repeat no-repeat 2px 3px; }
+.timeshift-player .startover .symbol { background: url("./img/player_icon_startover.png") no-repeat no-repeat 2px 3px; }
+.timeshift-player .fullscreen .symbol { background: url("./img/player_icon_fullscreen.png") no-repeat no-repeat 2px 3px; }
+
+.timeshift-player .status {
+	width: 541px;
+	height: 19px;
+	position: relative;
+	background: url("./img/player_status_back.png") no-repeat;
+}
+
+.timeshift-player .status .begin {
+	width: 6px;
+	height: 19px;
+	background: url("./img/player_status_act_begin.png") no-repeat;
+	float: left;
+}
+
+.timeshift-player .status .progress {
+	width: 100px;
+	height: 19px;
+	background: url("./img/player_status_act_rep.png") repeat-x;
+	float: left;
+}
+
+.timeshift-player .status .end {
+	width: 3px;
+	height: 19px;
+	background: url("./img/player_status_act_end.png") no-repeat;
+	float: left;
+}
+
+.timeshift-player .status .cursor {
+	width: 32px;
+	height: 34px;
+	background: url("./img/player_icon_cursor.png") no-repeat;
+	position: absolute;
+	top: -5px;
+}
+
+.timeshift-player .status .timestamp {
+	width: 15px;
+	height: 17px;
+	background: url("./img/player_icon_timeshift.png") no-repeat;
+	position: absolute;
+	top: 2px;
+}
