@@ -86,11 +86,11 @@ function(
 		console.log(this._triangles);
 	};
 
-	Ply.prototype.getVertexs = function() {
+	PLY.prototype.getVertexs = function() {
 		return this._vertexs;
 	};
 
-	Ply.prototype.getTriangles = function() {
+	PLY.prototype.getTriangles = function() {
 		return this._triangles;
 	};
 

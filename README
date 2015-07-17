@@ -1,2 +1,36 @@
+Raytracer
+=========
+
+Start:
+
 npm install
 ./dev-server.js 
+
+Workflow:
+
+- load ply
+- build geometry
+- build BVH tree from geometry
+- render final image using BVH tree
+
+TODO:
+
+* vector.h [DONE]
+* BVH.cpp [DONE]
+* BVH.h [DONE]
+* camera.cpp [DONE]
+* camera.h [DONE]
+* cubemap.h
+* funcs.cpp [DONE]
+* geometry.h
+* intersection.cpp
+* intersection.h
+* main.cpp
+* ply.cpp
+* ply.h
+* raytrace.cpp
+* raytrace.h
+* render.cpp
+* render.h
+* stdafx.h [DONE]
+* structs.h [DONE]
