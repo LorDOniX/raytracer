@@ -1,26 +1,32 @@
 raytracer.factory("PLY", [
 	"Vector3",
 	"Triangle",
+	"Face",
 	"$q",
 	"$http",
+	"Geometry",
 function(
 	Vector3,
 	Triangle,
+	Face,
 	$q,
-	$http
+	$http,
+	Geometry
 ) {
 
-	var PLY = function (filePath) {
-		// { x: 5, y: 4, z: 3}, ....
-		this._vertexs = new Array();
-		// { vertex: [{ x: 5, y: 4, z: 3},{ x: 5, y: 4, z: 3},{ x: 5, y: 4, z: 3}] }, ...
-		this._triangles = new Array();
+	var PLY = function (filePath, scale, flipNormals) {
 		this._filePath = filePath;
+		this._scale = scale;
+		this._flipNormals = flipNormals;
 
 		var promise = $q.defer();
 
 		this._readData(filePath).then(function(data) {
-			this._parseData(data.data);
+			var pd = this._parseData(data.data);
+			var geometry = this._makeGeometry(pd);
+
+			console.log(geometry);
+
 			promise.resolve();
 		}.bind(this), function() {
 			promise.reject();
@@ -35,63 +41,177 @@ function(
 		});
 	};
 
+	PLY.prototype._makeGeometry = function(parsedData) {
+		var vertices = [];
+		var faces = [];
+		var perVertexNormals = [];
+		var textureCoordinates = [];
+		var scale = this._scale || 1;
+
+		// vertices
+		for (var i = 0; i < parsedData.vertexsLen; i++) {
+			var vertexObj = parsedData.vertexs[i];
+			var vec3position = new Vector3(0, 0, 0);
+			var vec3normal = new Vector3(0, 0, 0);
+			var vec3textureCoordinate = new Vector3(0, 0, 0);
+
+			Object.keys(vertexObj).forEach(function(key) {
+				var value = parseFloat(vertexObj[key]);
+				key = key.toLowerCase();
+
+				switch (key) {
+					case "x":
+						vec3position.setX(value);
+						break;
+
+					case "y":
+						vec3position.setY(value);
+						break;
+
+					case "z":
+						vec3position.setZ(value);
+						break;
+
+					case "nx":
+						vec3normal.setX(value);
+						break;
+
+					case "ny":
+						vec3normal.setY(value);
+						break;
+
+					case "nz":
+						vec3normal.setZ(value);
+						break;
+				}
+			}, this);
+
+			vec3position.multiplyAssign(scale);
+			vertices.push(vec3position);
+
+			if (this._flipNormals ) {
+				vec3normal.multiplyAssign(-1);
+			}
+			vec3normal.normalize();
+			perVertexNormals.push(vec3normal);
+
+			textureCoordinates.push(vec3textureCoordinate);
+		}
+
+		var geometry = Geometry.createGeometry(vertices, perVertexNormals, parsedData.facesLen);
+
+		// faces
+		for (var i = 0; i < parsedData.facesLen; i++) {
+			var faceObj = parsedData.faces[i];
+			var face = new Face();
+
+			face.setVertexIndicies(0, parseInt(faceObj.v0));
+			face.setVertexIndicies(1, parseInt(faceObj.v1));
+			face.setVertexIndicies(2, parseInt(faceObj.v2));
+
+			geometry.addFace(face);
+		};
+
+		geometry.buildTriangles(this._flipNormals);
+
+		return geometry;
+	};
+
 	PLY.prototype._parseData = function(data) {
 		data = data || "";
 
-		// end_header
 		var lines = data.split("\n");
 
+		var STATES = {
+			HEAD: 0,
+			HEAD_VERTEX: 1,
+			HEAD_FACE: 2,
+			VERTEX: 3,
+			FACE: 4,
+			END: 100
+		};
+
+		var state = STATES.HEAD;
+
+		var output = {
+			faces: [],
+			facesLen: 0,
+			facesP: 0,
+			facesProperties: ["count", "v0", "v1", "v2"],
+			vertexs: [],
+			vertexsP: 0,
+			vertexsLen: 0,
+			vertexProperies: []
+		};
+		
 		for (var i = 0; i < lines.length; i++) {
 			var line = lines[i];
 
-			if (line.indexOf("end_header") >= 0) {
-				lines.splice(0, i + 1);
-				break;
-			}
-		}
-
-		// make array of indexes -0.0312216 0.126304 0.00514924 0.850855 0.5 
-		// 3 32609 32608 32499
-		for (var i = 0; i < lines.length; i++) {
-			var splits = lines[i].split(" ");
-
-			if (splits[0] == "3") {
-				// reading _triangles
-				var x = this._vertexs[parseInt(splits[1], 10)];
-				var triangle = new Triangle(
-					this._vertexs[parseInt(splits[1], 10)],
-					this._vertexs[parseInt(splits[3], 10)],
-					this._vertexs[parseInt(splits[2], 10)]
-				);
-
-				this._triangles.push(triangle); // y is switch for z
-			}
-			else {
-				if (splits[0].length == 0) {
+			switch (state) {
+				case STATES.HEAD:
+					if (line.indexOf("element vertex") != -1) {
+						state = STATES.HEAD_VERTEX;
+						output.vertexsLen = parseInt(line.split(" ")[2], 10);
+					}
 					break;
-				}
 
-				// reading _vertexs
-				var vector3 = new Vector3(
-					parseFloat(splits[0]),
-					parseFloat(splits[1]),
-					parseFloat(splits[2])
-				);
+				case STATES.HEAD_VERTEX:
+					if (line.indexOf("element face") != -1) {
+						state = STATES.HEAD_FACE;
+						output.facesLen = parseInt(line.split(" ")[2], 10);
+					}
+					else if (line.indexOf("property") != -1) {
+						output.vertexProperies.push(line.split(" ")[2])
+					}
+					break;
 
-				this._vertexs.push(vector3);
-			}
+				case STATES.HEAD_FACE:
+					if (line.indexOf("end_header") != -1) {
+						state = STATES.VERTEX;
+					}
+					break;
+
+				case STATES.VERTEX:
+					var values = line.trim().split(" ");
+					var vertex = {};
+
+					for (var j = 0; j < values.length; j++) {
+						vertex[output.vertexProperies[j]] = values[j];
+					}
+
+					if (values.length == output.vertexProperies.length) {
+						output.vertexs.push(vertex);
+						output.vertexsP++;
+					}
+
+					if (output.vertexsP == output.vertexsLen) {
+						state = STATES.FACE;
+					}
+					break;
+
+				case STATES.FACE:
+					var values = line.trim().split(" ");
+					var face = {};
+
+					for (var j = 0; j < values.length; j++) {
+						face[output.facesProperties[j]] = values[j];
+					}
+
+					if (values.length == output.facesProperties.length) {
+						output.faces.push(face);
+						output.facesP++;
+					}
+					
+					if (output.facesP == output.facesLen) {
+						state = STATES.FACE;
+					}
+					break;
+			};
+
+			if (state == STATES.END) break;
 		}
-		// output
-		console.log(this._vertexs);
-		console.log(this._triangles);
-	};
 
-	PLY.prototype.getVertexs = function() {
-		return this._vertexs;
-	};
-
-	PLY.prototype.getTriangles = function() {
-		return this._triangles;
+		return output;
 	};
 
 	return PLY;

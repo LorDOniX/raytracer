@@ -20,12 +20,12 @@ TODO:
 * BVH.h [DONE]
 * camera.cpp [DONE]
 * camera.h [DONE]
-* cubemap.h
+* cubemap.h [DONE]
 * funcs.cpp [DONE]
-* geometry.h
-* intersection.cpp
-* intersection.h
-* main.cpp
+* geometry.h [DONE]
+* intersection.cpp [DONE]
+* intersection.h [DONE]
+* main.cpp [DONE]
 * ply.cpp
 * ply.h
 * raytrace.cpp
@@ -34,3 +34,11 @@ TODO:
 * render.h
 * stdafx.h [DONE]
 * structs.h [DONE]
+
+NOTES:
+
+var myImg = new Image();
+myImg.src = 'image.jpg';
+var context = document.getElementById('canvas').getContext('2d');
+context.drawImage(myImg, 0, 0);
+data = context.getImageData(x, y, 1, 1).data;

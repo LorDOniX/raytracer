@@ -1,7 +1,9 @@
 raytracer.factory("BVH", [
 	"Node",
+	"Intersection",
 function(
-	Node
+	Node,
+	Intersection
 ) {
 	
 	var BVH = function(geometry, maxLeafItems) {
@@ -74,7 +76,8 @@ function(
 	};
 
 	BVH.prototype._traverse = function(ray, node, t0, t1) {
-		if (rayBoxIntersection(ray, node.rwData().bounding, t0, t1)) // todo
+		var rbi = Intersection.rayBoxIntersection(ray, node.rwData().bounding, t0, t1);
+		if (rbi.test)
 		{
 			if (node.isLeaf())
 			{
@@ -83,14 +86,14 @@ function(
 
 				// projdeme trojuhelniky
 				for (var i = forFrom; i <= forTo; i++) {
-					rayTriangleIntersection97(this._items[i], ray); // todo
+					Intersection.rayTriangleIntersection97(this._items[i], ray);
 				}
 			}
 			else
 			{
 				// projdeme oba potomky
-				this._traverse(ray, node.rwData().children[0], t0, t1);
-				this._traverse(ray, node.rwData().children[1], t0, t1);
+				this._traverse(ray, node.rwData().children[0], rbi.t0, rbi.t1);
+				this._traverse(ray, node.rwData().children[1], rbi.t0, rbi.t1);
 			}
 		}
 	};
