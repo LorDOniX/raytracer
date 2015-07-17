@@ -1,0 +1,152 @@
+- antialising [hotovo]
+- ruska ruleta [hotovo]
+- phongovo stínování [rozpracované]
+	- v projektu bylo hodnì špatnì vìcí, kde se používal direction vektor
+=== [ZATIM NEPOTREBNE]
+- prùhledné materiály
+- bipolární interpolace
+
+==
+// pocud dobre, pak se vlastne pomoci hodnot u, v musi vybrat 1 ze tri trojuhelniku,
+		// ktere se spocitaly jak per vertex normaly v geometrii
+		// podle tohoto treba: u > 0.5 vybrat 2
+		// v > 0.5 > vybrat 1
+		// jinak vybrat 0, cislo zname normalu v bode
+==
+per vertex normaly
+http://blackpawn.com/texts/pointinpoly/default.html
+http://mrl.cs.vsb.cz/people/fabian/pg1_course.html
+
+vše je hotovo, ve volném èase optimalizace kódu
+http://en.wikipedia.org/wiki/Fresnel_equations
+http://en.wikipedia.org/wiki/Snell's_law
+
+bipolarni interpolace
+return BilinearInterpolation(maps_[map], x * maps_[map]
+
+Cviko 09
+--------
+Transparentní materiály
+- problém, zvnikají dva paprsky, propuštìný a odražený
+index refrakce 1.5, vzduch má 1, dva druhy materiálù, které se vyskytují za a pøed
+interfacem, musíme je zaintegrovat do geometrického výpoètu, kudy má nový paprsek
+smìøovat, reflexivita a transmitivita, totální odraz = totální reflexe, rychlost
+šíøení svìtla v prostøedí ku vakuu, 
+
+sin o1
+------
+sin o2 = teta 2 / teta 1; teta2 je paprsek propagujici se do materialu, prvni zakon
+
+http://en.wikipedia.org/wiki/Snell's_law
+n - normalovy, l dopadajici paprsek, svetelny zdroj nahradit okem, potøebujueme se
+dopídít k cos o2, pøes goniometrickou 1 se dá dostat ke vztahu, dvì dosazení a jsem
+na druhém øádku, v druhém øádku v odmocninì je potøeba si ohlídat to za -(n1/n2)2,
+toto nesmí být vìtší jak 1, to znamená že nastala totální reflexe, to jak to máme
+teïka, pokud projdeme tuto podmínku, staèí vypoèítat odražený parpsek a jeho
+smìrový vektor, musíme se trekovat kde jsme, nesmíme se spoléhat na normálu,
+toto je geometrická èást, to je v druhé èásti: http://en.wikipedia.org/wiki/Fresnel_equations
+
+R = (Rs + Rp) / 2
+místo material transmitivity dáme na R, poèítáme z tìch levých vzorcù, práve jsou
+moc složité, toto poèítáme v pøípadì, kdy chceme spoèítat odrazený paprsek,
+pokud chceme ten co proletí, zákon energie, Tp = 1 - Rp, z tohoto vypoèítáme Tp,
+když známe Rp, transmivita alias propustnost, 
+
+real cos_phi1 = cos <- tento cos skrtnout
+
+light(vector3(0.2, 0.3f, 0.5f)
+
+IOR_MATERIAL = 1.00029;
+IOR_MATERIAL = 1.5; // sklo 1.5
+
+Trace 3
+if (ray.target.surface >= 0)
+{
+	REAL R, T;
+	REAL reflectivity;
+	
+	{
+		vlastní kod
+		const REAL cos_phi1 = cos(abs(n.DotProduct
+		const REAL sin_phi1 = sqrt(1 - sqr(cos_phi1));
+		const REAL n1 = current material vzduch 1;
+		const real n2 = (n1 = IOR_AIR) ? IOR_MATERIAL : IOR_AIR;
+		ReAL tmp = (n1 / n2) * sin_phi1;
+		if (tmp >= 1) // totalni reflexe
+		{
+			R = 1;
+			T = 0;
+			reflectivity = R;
+		}
+		else
+		{
+			// reflekce a refrakce
+			const REAL cos_phi2 = sqrt(1 - SQR(tmp));
+			const REAL n1_cos_phi1 = n1 * cos_phi1;
+			const REAL n2_cos_phi1 = n2 * cost_phi1;
+			const REAL rs = (n1_cos_phi1 - n2_cos_phi2) / (n1_cos_p
+			
+			// koeficinty transmize
+			
+			real conservation = R + T;
+			
+			// ruska ruleta
+			REAL ksi = rnd(); // 0 až 1
+			
+			if (ksi <= R)
+			{
+				// dale pocitame pouze s odrazenym paprsekem
+				current_material_ior = n1;
+				refelctivity = R;
+			}
+			else if (ksi <= R+ T) // toto vyjde skoro vzdycky
+			{
+				// dale poictame pouze s propustenym paprskem
+				current_material_ior = n2;
+				reflectivity = T;
+				
+				r = (n1 / n2) * ray.direction + (n1_cos_phi1 / n2 - vektorova podoba snerova zakona // smerovy paprsek noveho paprsku
+				r.Normalize();
+			}
+		}
+		
+		// zbytek kodu stejny jako predtim
+		new ray, ray = new ray, jeste barvy phongova stinovani
+		
+Cviko 09
+--------
+Transparentní materiály
+- problém, zvnikají dva paprsky, propuštìný a odražený
+index refrakce 1.5, vzduch má 1, dva druhy materiálù, které se vyskytují za a pøed
+interfacem, musíme je zaintegrovat do geometrického výpoètu, kudy má nový paprsek
+smìøovat, reflexivita a transmitivita, totální odraz = totální reflexe, rychlost
+šíøení svìtla v prostøedí ku vakuu, 
+
+sin o1
+------
+sin o2 = teta 2 / teta 1; teta2 je paprsek propagujici se do materialu, prvni zakon
+
+http://en.wikipedia.org/wiki/Snell's_law
+n - normalovy, l dopadajici paprsek, svetelny zdroj nahradit okem, potøebujueme se
+dopídít k cos o2, pøes goniometrickou 1 se dá dostat ke vztahu, dvì dosazení a jsem
+na druhém øádku, v druhém øádku v odmocninì je potøeba si ohlídat to za -(n1/n2)2,
+toto nesmí být vìtší jak 1, to znamená že nastala totální reflexe, to jak to máme
+teïka, pokud projdeme tuto podmínku, staèí vypoèítat odražený parpsek a jeho
+smìrový vektor, musíme se trekovat kde jsme, nesmíme se spoléhat na normálu,
+toto je geometrická èást, to je v druhé èásti: http://en.wikipedia.org/wiki/Fresnel_equations
+
+R = (Rs + Rp) / 2
+místo material transmitivity dáme na R, poèítáme z tìch levých vzorcù, práve jsou
+moc složité, toto poèítáme v pøípadì, kdy chceme spoèítat odrazený paprsek,
+pokud chceme ten co proletí, zákon energie, Tp = 1 - Rp, z tohoto vypoèítáme Tp,
+když známe Rp, transmivita alias propustnost
+
+Nejlepe zkontrolovat na tvaru koule, krychle
+
+kvuli ruske rulete potrebujeme vice samplu, na jeden pixel, zaciname v kamere,
+1 paprsek, pak se hodne deli, kvuli tomu musi byt hodne vzorku, SAMPLES_PER_PIXEL dame 7,
+7*7 na jeden pixel, supersampling pro antialiasing a potlaèení šumu, rozdíl mezi
+1 a 7, 7 je lepší
+
+is transparent si dat k materialu a podle toho se rozhodnout, pokud neni transparenti,
+jedem podle toho co mame tedka

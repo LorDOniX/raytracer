@@ -6,5 +6,14 @@ raytracer.factory("Vector3", function() {
 		this._z = z || 0;
 	};
 
+	// get read; also get and write
+	Vector3.prototype.rwData = function() {
+		return {
+			x: this._x,
+			y: this._y,
+			z: this._z
+		}
+	};
+
 	return Vector3;
 });

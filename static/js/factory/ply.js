@@ -11,8 +11,10 @@ function(
 ) {
 
 	var PLY = function (filePath) {
-		this._vertexs = new Array(); // { x: 5, y: 4, z: 3}, ....
-		this._triangles = new Array(); // { vertex: [{ x: 5, y: 4, z: 3},{ x: 5, y: 4, z: 3},{ x: 5, y: 4, z: 3}] }, ...
+		// { x: 5, y: 4, z: 3}, ....
+		this._vertexs = new Array();
+		// { vertex: [{ x: 5, y: 4, z: 3},{ x: 5, y: 4, z: 3},{ x: 5, y: 4, z: 3}] }, ...
+		this._triangles = new Array();
 		this._filePath = filePath;
 
 		var promise = $q.defer();
@@ -82,6 +84,14 @@ function(
 		// output
 		console.log(this._vertexs);
 		console.log(this._triangles);
+	};
+
+	Ply.prototype.getVertexs = function() {
+		return this._vertexs;
+	};
+
+	Ply.prototype.getTriangles = function() {
+		return this._triangles;
 	};
 
 	return PLY;
