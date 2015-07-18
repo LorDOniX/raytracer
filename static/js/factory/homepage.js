@@ -1,7 +1,11 @@
 raytracer.factory("HomePage", [
 	"PLY",
+	"BVH",
+	"Render",
 function(
-	PLY
+	PLY,
+	BVH,
+	Render
 ) {
 
 	var HomePage = {};
@@ -9,8 +13,10 @@ function(
 	HomePage.run = function() {
 		console.log("run");
 
-		var ply = new PLY("/model/bunny.ply").then(function() {
+		var ply = new PLY("/model/bunny.ply").then(function(geometry) {
 			console.log("ply done");
+			var bvh = new BVH(geometry, 8);
+			Render.renderImage(bvh, true, 1); // true -> phong, 1x AA
 		});
 	};
 

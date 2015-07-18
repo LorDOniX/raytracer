@@ -44,7 +44,11 @@ function(
 		return this._inv;
 	};
 
-	Ray.prototype.rarget = function() {
+	Ray.prototype.getTriangle = function() {
+		return this._triangle;
+	};
+
+	Ray.prototype.target = function() {
 		return Vector3.plus(
 			this._origin,
 			Vector3.multiply(this._t, this._direction)

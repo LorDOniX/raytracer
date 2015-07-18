@@ -25,9 +25,7 @@ function(
 			var pd = this._parseData(data.data);
 			var geometry = this._makeGeometry(pd);
 
-			console.log(geometry);
-
-			promise.resolve();
+			promise.resolve(geometry);
 		}.bind(this), function() {
 			promise.reject();
 		}.bind(this));

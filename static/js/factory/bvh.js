@@ -43,7 +43,7 @@ function(
 
 		for (var i = from; i <= to; i++)
 		{
-			node.rwData().bounding.merge(this._items[i].bounds());
+			node.getBounding().merge(this._items[i].bounds());
 		}
 
 		if (n <= this._maxLeafItems)
@@ -59,7 +59,7 @@ function(
 
 		var pivot = n / 2 + from;
 
-		sort(this._items[from], n, axis); // todo
+		Intersection.sort(this._items[from], n, axis); 
 
 		// rozdeleni na dva podintervaly
 		axis = (axis + 1) % 3;

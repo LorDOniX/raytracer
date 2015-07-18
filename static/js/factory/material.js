@@ -28,5 +28,57 @@ function(
 		};
 	};
 
+	Material.prototype.getAmbiente = function() {
+		return this._ambiente;
+	};
+
+	Material.prototype.getDiffuse = function() {
+		return this._diffuse;
+	};
+
+	Material.prototype.getSpecular = function() {
+		return this._specular;
+	};
+
+	Material.prototype.getEmission = function() {
+		return this._emission;
+	};
+
+	Material.prototype.getShininess = function() {
+		return this._shininess;
+	};
+
+	Material.prototype.getReflectivity = function() {
+		return this._reflectivity;
+	};
+
+	Material.prototype.setAmbiente = function(ambiente) {
+		this._ambiente = ambiente;
+	};
+
+	Material.prototype.seDiffuse = function(diffuse) {
+		this._diffuse = diffuse;
+	};
+
+	Material.prototype.setSpecular = function(specular) {
+		this._specular = specular;
+	};
+
+	Material.prototype.setEmission = function(emission) {
+		this._emission = emission;
+	};
+
+	Material.prototype.setShininess = function(shininess) {
+		this._shininess = shininess;
+	};
+
+	Material.prototype.setReflectivity = function(reflectivity) {
+		this._reflectivity = reflectivity;
+	};
+
+	Material.prototype.setIor = function(ior) {
+		this._ior = ior;
+	};
+
 	return Material;
 }]);

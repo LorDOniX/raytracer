@@ -1,8 +1,12 @@
-raytracer.factory("Node", function() {
+raytracer.factory("Node", [
+	"AABB",
+function(
+	AABB
+) {
 	
 	var Node = function(from, to) {
 		// omezujici kvadr vsech itemu v uzlu
-		this._bounding = null;
+		this._bounding = new AABB();
 		// uzavreny interval vsech indexu
 		this._span = new Array(2);
 		// dva potomci max. leva a prava cast
@@ -18,6 +22,10 @@ raytracer.factory("Node", function() {
 
 	Node.prototype.setBounding = function(bounding) {
 		this._bounding = bounding;
+	};
+
+	Node.prototype.getBounding = function() {
+		return this._bounding;
 	};
 
 	Node.prototype.addChildren = function(children) {
@@ -38,4 +46,4 @@ raytracer.factory("Node", function() {
 	};
 
 	return Node;
-});
+}]);

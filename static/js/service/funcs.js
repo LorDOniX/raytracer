@@ -9,4 +9,8 @@ raytracer.service("Funcs", function() {
 	this.deg2rad = function(deg) {
 		return deg * Math.PI / 180;
 	};
+
+	this.sqr = function(a) {
+		return a * a;
+	};
 });

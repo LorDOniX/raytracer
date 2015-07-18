@@ -25,5 +25,37 @@ function(
 		};
 	};
 
+	Light.prototype.setAmbiente = function(ambiente) {
+		this._ambiente = ambiente;
+	};
+
+	Light.prototype.getAmbiente = function() {
+		return this._ambiente;
+	};
+
+	Light.prototype.setDiffuse = function(diffuse) {
+		this._diffuse = diffuse;
+	};
+
+	Light.prototype.getDiffuse = function() {
+		return this._diffuse;
+	};
+
+	Light.prototype.setSpecular = function(specular) {
+		this._specular = specular;
+	};
+
+	Light.prototype.getSpecular = function() {
+		return this._specular;
+	};
+
+	Light.prototype.setPosition = function(position) {
+		this._position = position;
+	};
+
+	Light.prototype.getPosition = function() {
+		return this._position;
+	};
+
 	return Light;
 }]);
