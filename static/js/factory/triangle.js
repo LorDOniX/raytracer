@@ -42,19 +42,26 @@ function(
 	Triangle.prototype.bounds = function() {
 		var output = new AABB();
 		var d = output.rwData().bounds;
+
 		var vd0 = this._vertices[0].rwData();
 		var vd1 = this._vertices[1].rwData();
 		var vd2 = this._vertices[2].rwData();
 
 		// min vektor
-		d[0].x = Math.min(Math.min(vd0.x, vd1.x), vd2.x);
-		d[0].y = Math.min(Math.min(vd0.y, vd1.y), vd2.y);
-		d[0].z = Math.min(Math.min(vd0.z, vd1.z), vd2.z);
+		output.setBounds(
+			0,
+			Math.min(Math.min(vd0.x, vd1.x), vd2.x),
+			Math.min(Math.min(vd0.y, vd1.y), vd2.y),
+			Math.min(Math.min(vd0.z, vd1.z), vd2.z)
+		);
 
 		// max vektor
-		d[1].x = Math.max(Math.max(vd0.x, vd1.x), vd2.x);
-		d[1].y = Math.max(Math.max(vd0.y, vd1.y), vd2.y);
-		d[1].z = Math.max(Math.max(vd0.z, vd1.z), vd2.z);
+		output.setBounds(
+			1,
+			Math.max(Math.max(vd0.x, vd1.x), vd2.x),
+			Math.max(Math.max(vd0.y, vd1.y), vd2.y),
+			Math.max(Math.max(vd0.z, vd1.z), vd2.z)
+		);
 
 		return output;
 	};

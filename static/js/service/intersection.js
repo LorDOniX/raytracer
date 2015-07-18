@@ -4,60 +4,20 @@ function(
 	Vector3
 ) {
 
-	this.sort = function(items, n, axis) {
-		var MAX_LEVELS = 300;
+	this.sort = function(items, from, n, axis) {
+		// seradit cast pole podle osy
+		var arrayToSort = items.slice(from, from + n);
 
-		var beg = new Array(MAX_LEVELS);
-		var end = new Array(MAX_LEVELS);
+		arrayToSort.sort(function(a, b) {
+			var aValue = a.bounds().centroid().getAxisValue(axis);
+			var bValue = b.bounds().centroid().getAxisValue(axis);
 
-		var i=0, L, R, swap;
-		var piv;
+			return aValue - bValue;
+		});
 
-		beg[0] = 0;
-		end[0] = n;
-				
-		while (i >= 0) {
-			L = beg[i];
-			R = end[i] - 1;
-		
-			if (L < R) {
-				piv = items[L];
-
-				while (L < R) {
-					while (items[R].bounds().centroid().getAxisValue(axis) >= piv.bounds().centroid().getAxisValue(axis) && L < R) {
-						R--;
-					}
-						
-					if (L < R) {
-						items[L++]=items[R];
-					}
-
-					while (items[L].bounds().centroid().getAxisValue(axis) <= piv.bounds().centroid().getAxisValue(axis) && L < R) {
-						L++;
-					}
-
-					if (L < R) {
-						items[R--] = items[L];
-					}
-				}
-
-				items[L] = piv;
-				beg[i + 1] = L + 1;
-				end[i + 1] = end[i];
-				end[i++] = L;
-
-				if (end[i] - beg[i] > end[i - 1] - beg[i - 1]) {
-					swap = beg[i];
-					beg[i] = beg[i - 1];
-					beg[i - 1] = swap;
-					swap = end[i];
-					end[i] = end[i - 1];
-					end[i - 1] = swap;
-				}
-			}
-			else {
-				i--;
-			}
+		// pomoci noveho pole upravime to stare
+		for (var i = 0; i < arrayToSort.length; i++) {
+			items[from + i] = arrayToSort[i];
 		}
 	};
 

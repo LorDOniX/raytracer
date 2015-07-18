@@ -159,7 +159,7 @@ function(
 						output.facesLen = parseInt(line.split(" ")[2], 10);
 					}
 					else if (line.indexOf("property") != -1) {
-						output.vertexProperies.push(line.split(" ")[2])
+						output.vertexProperies.push(line.split(" ")[2].trim());
 					}
 					break;
 

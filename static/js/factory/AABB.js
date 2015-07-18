@@ -34,12 +34,20 @@ function(
 		);
 
 		// maxima z maxim
-		this._bounds[0].setXYZ(
+		this._bounds[1].setXYZ(
 			Math.max(tb1.x, bb1.x),
 			Math.max(tb1.y, bb1.y),
 			Math.max(tb1.z, bb1.z)
 		);
 	};
+
+	AABB.prototype.setBounds = function(ind, x, y, z) {
+		var b = this._bounds[ind];
+		
+		b.setX(x);
+		b.setY(y);
+		b.setZ(z);
+	}
 
 	AABB.prototype.centroid = function() {
 		var tb0 = this._bounds[0].rwData();

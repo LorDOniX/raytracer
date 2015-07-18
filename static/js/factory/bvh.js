@@ -43,7 +43,12 @@ function(
 
 		for (var i = from; i <= to; i++)
 		{
-			node.getBounding().merge(this._items[i].bounds());
+			try {
+				node.getBounding().merge(this._items[i].bounds());
+			}
+			catch (err) {
+				debugger;
+			}
 		}
 
 		if (n <= this._maxLeafItems)
@@ -57,9 +62,9 @@ function(
 		// pokud to neni leaf -> node
 		this._nodes += 2;
 
-		var pivot = n / 2 + from;
+		var pivot = (n / 2 >> 0) + from;
 
-		Intersection.sort(this._items[from], n, axis); 
+		Intersection.sort(this._items, from, n, axis); 
 
 		// rozdeleni na dva podintervaly
 		axis = (axis + 1) % 3;
@@ -104,14 +109,19 @@ function(
 		console.log("Items : %d\n", this._itemsCount);
 		console.log("Max d.: %d\n", this._maxDepth);
 		console.log("Leaf items: %d\n", this._maxLeafItems);
+
+		var bounds = this._root.getBounding().rwData().bounds;
+
 		console.log("Bounds=(%.3f, %.3f, %.3f) x (%.3f, %.3f, %.3f)\n",
-			this._root.bounding.bounds[0].x,
-			this._root.bounding.bounds[0].y,
-			this._root.bounding.bounds[0].z,
-			this._root.bounding.bounds[1].x,
-			this._root.bounding.bounds[1].y,
-			this._root.bounding.bounds[1].z
+			bounds[0].rwData().x,
+			bounds[0].rwData().y,
+			bounds[0].rwData().z,
+			bounds[1].rwData().x,
+			bounds[1].rwData().y,
+			bounds[1].rwData().z
 		);
+
+		console.log(this._root)
 	};
 
 	return BVH;

@@ -14,9 +14,8 @@ function(
 		console.log("run");
 
 		var ply = new PLY("/model/bunny.ply").then(function(geometry) {
-			console.log("ply done");
 			var bvh = new BVH(geometry, 8);
-			Render.renderImage(bvh, true, 1); // true -> phong, 1x AA
+			//Render.renderImage(bvh, true, 1); // true -> phong, 1x AA
 		});
 	};
 
