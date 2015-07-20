@@ -1,11 +1,11 @@
 raytracer.factory("Render", [
 	"Camera",
-	"CubeMap",
+	"Cubemap",
 	"Raytrace",
 	"Vector3",
 function(
 	Camera,
-	CubeMap,
+	Cubemap,
 	Raytrace,
 	Vector3
 ) {
@@ -13,32 +13,59 @@ function(
 	var Render = function() {
 	};
 
-	Render.prototype.renderImage = function(bvh, phong, aa) {
+	// static method
+	Render.renderImage = function(bvh, phong, aa) {
 		var camera = new Camera();
 		//camera->SetWidth(1300);
 		//camera->SetHeight(700);
+		
+		var canvasEl = document.createElement("canvas");
+		canvasEl.width = camera.getWidth();
+		canvasEl.height = camera.getHeight();
 
-		var cubemap = new CubeMap(); // cubemap, odkaz na pozadi 
+		document.body.appendChild(canvasEl);
 
-		 // antialising - supersampling - jittering
+		var ctx = canvasEl.getContext("2d");
 
-		 // pocet vzorku na pixel 7*7 = 49 x
-		 var times = aa * aa;
-		 console.log("Antialising : %d samples, times %d x per pixel\n", aa, times);
+		var cubemap = new Cubemap(); // cubemap, odkaz na pozadi 
+		cubemap.load().then(function() {
+			this._render(bvh, phong, aa, cubemap, ctx, camera);
+		}.bind(this));
+	};
 
-		 // krokovac pro antialiasing
-		 var ds = 1 / aa;
+	Render._putPixel = function(color, x, y, ctx) {
+		var id = ctx.createImageData(1,1); // only do this once per page
+		var d  = id.data; // only do this once per page
+		var dd = color.rwData();
 
-		 // podil barvy
-		 var coef = 1 / (aa * aa);
+		d[0] = Math.floor(dd.x * 255);
+		d[1] = Math.floor(dd.y * 255);
+		d[2] = Math.floor(dd.z * 255);
+		d[3] = 255; // alpha 0-255
 
-		 console.log("Start render\n");
+		ctx.putImageData(id, x, y );
+	};
 
-		 // phong nebo posledni cviceni - pruhlednost
-		 if (phong)
-			 console.log("- phong shading\n");
-		 else
-			 console.log("- phong shading, material reflectivity a transmitivity\n");
+	Render._render = function(bvh, phong, aa, cubemap, ctx, camera) {
+		// antialising - supersampling - jittering
+
+		// pocet vzorku na pixel 7*7 = 49 x
+		var times = aa * aa;
+		console.log("Antialising : %d samples, times %d x per pixel\n", aa, times);
+
+		// krokovac pro antialiasing
+		var ds = 1 / aa;
+
+		// podil barvy
+		var coef = 1 / (aa * aa);
+
+		console.log("Start render\n");
+
+		// phong nebo posledni cviceni - pruhlednost
+		if (phong)
+			console.log("- phong shading\n");
+		else
+			console.log("- phong shading, material reflectivity a transmitivity\n");
 
 		for ( var y = 0; y < camera.getHeight(); ++y )
 		{
@@ -96,10 +123,11 @@ function(
 				}
 
 				// vysledna barva
-				console.log("vysledna barva");
-				console.log(x, y, color);
-	      }
-	    }
+				//console.log("vysledna barva");
+				//console.log(x, y, color);
+				this._putPixel(color, x, y, ctx);
+			}
+		}
 		console.log("It takes %d seconds\n");
 		console.log("End render\n");
 	};

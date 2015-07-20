@@ -13,7 +13,8 @@ function(
 	var Raytrace = function() {
 	};
 
-	Raytrace.prototype.rayTrace = function(ray, bvh, cubemap, drawBack, phong) {
+	// static methods
+	Raytrace.rayTrace = function(ray, bvh, cubemap, drawBack, phong) {
 		var color = new Vector3(0.0, 0.0, 0.0);
 		var depth = 0;
 		// koeficient útlumu (odrazivosti) 1
@@ -37,7 +38,7 @@ function(
 		materials[0] = material;
 
 		// svetlo
-		var lights = new Arry(2);
+		var lights = new Array(2);
 		var light0 = new Light();
 		var light1 = new Light();
 
@@ -216,7 +217,7 @@ function(
 		return color;
 	};
 
-	Raytrace.prototype.backgroundHit = function(ray, bvh) {
+	Raytrace.backgroundHit = function(ray, bvh) {
 		// zavolame traverzaci
 		bvh.traverse(ray);
 

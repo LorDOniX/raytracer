@@ -1,7 +1,9 @@
 raytracer.factory("Cubemap", [
 	"Vector3",
+	"$q",
 function(
-	Vector3
+	Vector3,
+	$q
 ) {
 	
 	var Cubemap = function() {
@@ -13,6 +15,11 @@ function(
 			NEG_Y: 3,
 			POS_Z: 4,
 			NEG_Z: 5
+		};
+
+		this._IMG_DIM = {
+			width: 2048,
+			height: 2048
 		};
 
 		// pocet map
@@ -32,14 +39,50 @@ function(
 		this._cubeMaps[4] = "/img/posz.jpg";
 		this._cubeMaps[5] = "/img/negz.jpg";
 
-		this._loadImages();
+		this._el = document.querySelector(".img-area");
+
+		var canvas = document.createElement("canvas");
+		canvas.width = this._IMG_DIM.width;
+		canvas.height = this._IMG_DIM.height;
+
+		this._el.appendChild(canvas);
+
+		this._canvas = canvas;
+	};
+
+	Cubemap.prototype.load = function() {
+		return this._loadImages();
 	};
 
 	Cubemap.prototype._loadImages = function() {
+		var lock = this._mapsCount;
+		var promise = $q.defer();
+
 		// pro vsechny prvky
 		for (var i = 0; i < this._mapsCount; i++) {
-			this._maps[i] = ""; // todo
+			var img = new Image();
+			img.src = this._cubeMaps[i];
+			img.onload = function() {
+				lock--;
+				
+				if (lock == 0) {
+					promise.resolve();
+				}
+			};
+			img.onerror = function() {
+				lock--;
+				
+				if (lock == 0) {
+					promise.resolve();
+				}
+			};
+
+			this._el.appendChild(img);
+
+			this._maps[i] = img;
 		}
+
+		return promise;
 	};
 
 	Cubemap.prototype._getMasterAxis = function(vec3) {
@@ -59,7 +102,7 @@ function(
 	// http://cboard.cprogramming.com/game-programming/87890-bilinear-interpolation.html
 	// x a y je vstup ve float formatu, vystup je pak taky x a y, ale prepocitany
 	// vraci vec3
-	Cubemap.prototype._bilinearInterpolation = function(width, height, x, y, image) { // image todo
+	Cubemap.prototype._bilinearInterpolation = function(width, height, x, y, image) {
 		// S = (1-p)(1-q) a + (1-p) q c + p (1-q) b + p q d
 		// where (p,q) are the coordinates you find by taking the R-inverse transformation of your destination image pixel and a, b, c and d are the color information of the respective pixels (you have to apply red, green and blue seperately).
 		
@@ -97,31 +140,51 @@ function(
 		}
 
 		// 4 barvy pixelu
-		var a = this._getPixelFromImage(image, p1x, p1y); // todo
-		var b = this._getPixelFromImage(image, p2x, p2y);
-		var c = this._getPixelFromImage(image, p3x, p3y);
-		var d = this._getPixelFromImage(image, p4x, p4y);
+		var ctx = this._canvas.getContext("2d");
+		ctx.drawImage(image, 0, 0, this._IMG_DIM.width, this._IMG_DIM.height);
 
-		var S = (1 - p)*(1 - q) * a + (1-p) * q * c + p * (1-q) * b + p * q * d;
+		var a = this._getPixelFromImage(ctx, p1x, p1y); // 4x vektor s barvou
+		var b = this._getPixelFromImage(ctx, p2x, p2y);
+		var c = this._getPixelFromImage(ctx, p3x, p3y);
+		var d = this._getPixelFromImage(ctx, p4x, p4y);
+
+		//var S = (1 - p)*(1 - q) * a + (1-p) * q * c + p * (1-q) * b + p * q * d;
+
+		var S = Vector3.plus(
+			Vector3.plus(
+				Vector3.multiply(
+					(1 - p) * (1 - q),
+					a
+				),
+				Vector3.multiply(
+					(1- p) * q,
+					c
+				)
+			),
+			Vector3.plus(
+				Vector3.multiply(
+					p * (1-q),
+					b
+				),
+				Vector3.multiply(
+					p * q,
+					d
+				)
+			)
+		);
 
 		// vracime
 		return S;
 	};
 
-	Cubemap.prototype._getPixelFromImage = function(image, x, y) {
-		var pz = [0]; //&CV_IMAGE_ELEM(image, unsigned char, y, x * image->nChannels); todo
-		var py = [0]; //&CV_IMAGE_ELEM(image, unsigned char, y, x * image->nChannels + 1);
-		var px = [0]; //&CV_IMAGE_ELEM(image, unsigned char, y, x * image->nChannels + 2);
+	Cubemap.prototype._getPixelFromImage = function(ctx, x, y) {
+		var data = ctx.getImageData(x, y, 1, 1).data;
 
-		var colorX = px[0] / 255;
-		var colorY = py[0] / 255;
-		var colorZ = pz[0] / 255;
+		var colorX = data[0] / 255;
+		var colorY = data[1] / 255;
+		var colorZ = data[2] / 255;
 
 		var output = new Vector3(0, 0, 0);
-
-		// blue; pro float je interval <0.0, 1.0>, pro unsigned char <0, 255>
-		// green
-		// red
 		output.setXYZ(colorZ, colorY, colorX);
 
 		return output;
@@ -167,10 +230,10 @@ function(
 				break;
 		}
 
-		// parametry obrazu - bilinearni interpolace TODO
+		// parametry obrazu - bilinearni interpolace
 		// http://www.devmaster.net/articles/raytracing_series/part6.php
-		var width = image.width; // todo
-		var height = image.height;
+		var width = this._IMG_DIM.width; 
+		var height = this._IMG_DIM.height;
 
 		// nova pozice x
 		var newX = width * x;

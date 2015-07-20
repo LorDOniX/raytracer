@@ -1,15 +1,17 @@
 raytracer.factory("Camera", [
 	"Vector3",
 	"Funcs",
+	"Ray",
 function(
 	Vector3,
-	Funcs
+	Funcs,
+	Ray
 ) {
 	
 	var Camera = function() {
 		// sirka vyska obrazku
-		this._width = 640;
-		this._height = 480;
+		this._width = 160; // 640
+		this._height = 120; // 480
 		// pomer
 		this._aspect = 1.333;
 		// uhel otoceni oka
@@ -18,10 +20,10 @@ function(
 		this._eye = new Vector3(-0.067, 0.237, 0.184);
 
 		// transformacni matice 3x3
-		this._tm = new Array[3];
+		this._tm = new Array(3);
 
 		for (var i = 0; i < 3; i++) {
-			this._tm[i] = new Array[3];
+			this._tm[i] = new Array(3);
 		}
 
 		this._tm[0][0] = -0.982;
@@ -36,11 +38,11 @@ function(
 	};
 
 	Camera.prototype.generateRay = function(sx, sy) {
-		var fovX = this._fovY * aspect;
+		var fovX = this._fovY * this._aspect;
 
-		var x = ((2 * sx - width) / width) * Math.tan(Funcs.deg2rad(fovX * 0.5));
+		var x = ((2 * sx - this._width) / this._width) * Math.tan(Funcs.deg2rad(fovX * 0.5));
 		 
-		var y = ((2 * sy - height) / height) * Math.tan(Funcs.deg2rad(this._fovY * 0.5));
+		var y = ((2 * sy - this._height) / this._height) * Math.tan(Funcs.deg2rad(this._fovY * 0.5));
 
 		// smer noveho paprsku
 		var direction = new Vector3(x, -y, 1);

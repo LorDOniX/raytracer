@@ -56,7 +56,7 @@ function(
 		this._ambiente = ambiente;
 	};
 
-	Material.prototype.seDiffuse = function(diffuse) {
+	Material.prototype.setDiffuse = function(diffuse) {
 		this._diffuse = diffuse;
 	};
 
