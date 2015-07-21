@@ -10,8 +10,8 @@ function(
 	
 	var Camera = function() {
 		// sirka vyska obrazku
-		this._width = 160; // 640
-		this._height = 120; // 480
+		this._width = 640; // 640
+		this._height = 480; // 480
 		// pomer
 		this._aspect = 1.333;
 		// uhel otoceni oka

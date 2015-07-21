@@ -149,7 +149,7 @@ function(
 				else
 				{
 					// pouze odrazivoast materialu
-					coefficient *= material.reflectivity;
+					coefficient *= material.getReflectivity();
 				
 					// odražený nebo propuštěný paprsek
 					new_ray = Ray( 
@@ -169,7 +169,8 @@ function(
 				{
 					var light = lights[li];				
 
-					color += coefficient * material.getAmbiente() * light.getAmbiente(); // ambientní osvětlení je přítomno vždy
+					// ambientní osvětlení je přítomno vždy
+					color.plusAssign(Vector3.multiply(coefficient, Vector3.multiply(material.getAmbiente(), light.getAmbiente())), new Vector3(0, 0, 0));
 
 					var l = Vector3.minus(light.getPosition() - h); // směrový vektor od bodu zásahu k světelnému zdroji
 					l.normalize();
@@ -189,11 +190,13 @@ function(
 
 						var lr = Vector3.minus(l, Vector3.multiply( 2 * ( n.dotProduct( l ) ) , n));
 
-						color += coefficient * material.getDiffuse() * light.getDiffuse() *
-							( Math.max( n.dotProduct( l ), 0 ) ); // difuzní
+						// difuzní
+						color.plusAssign(Vector3.multiply(coefficient * ( Math.max( n.dotProduct( l ), 0 ) ), Vector3.multiply(material.getDiffuse(), light.getDiffuse())));
+						
 						var ldd = Math.max( lr.dotProduct( ray.getDirection() ), 0 );
-						color += coefficient * material.getSpecular() * light.getSpecular() *
-							Math.pow( ldd, material.getShininess() ); // spekulární
+
+						// spekulární
+						color.plusAssign(Vector3.multiply(coefficient * Math.pow( ldd, material.getShininess() ), Vector3.multiply(material.getSpecular(), light.getSpecular())));
 					}
 				}
 

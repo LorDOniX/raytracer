@@ -67,6 +67,8 @@ function(
 		else
 			console.log("- phong shading, material reflectivity a transmitivity\n");
 
+		console.time("RENDER");
+
 		for ( var y = 0; y < camera.getHeight(); ++y )
 		{
 			for ( var x = 0; x < camera.getWidth(); ++x )
@@ -128,8 +130,7 @@ function(
 				this._putPixel(color, x, y, ctx);
 			}
 		}
-		console.log("It takes %d seconds\n");
-		console.log("End render\n");
+		console.timeEnd("RENDER");
 	};
 	
 	return Render;
