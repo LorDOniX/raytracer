@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="cs">
+<head>
+	<title>Raytracer</title>
+
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, minimal-ui">
+
+	<link rel="stylesheet" type="text/css" href="/css/main.css?1">
+	<script src="/lib/loader.js?1"></script>
+	<script type="text/javascript">
+		Loader.version(1);
+		Loader.load([
+			"/js/main.js"
+		], [
+			"/js/polyfills.js",
+			"/js/main-legacy.js"
+		], true);
+	</script>
+</head>
+<body>
+	<h1>Raytracer</h1>
+	<div id="container">
+		<canvas id="canvas" />
+	</div>
+</body>
+</html>

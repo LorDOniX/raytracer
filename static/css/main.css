@@ -1,1 +1,1 @@
-body{margin:0;padding:0}.center{text-align:center}.align-right{text-align:right}.align-middle{vertical-align:middle !important}.float-right{float:right}.float-left{float:left}
+#container,h1{text-align:center}body{margin:0;padding:0}#container{max-width:1920px;margin:0 auto;background:#efefef;border:1px solid #ccc}#container canvas{min-width:1280px;display:inline-block;vertical-align:top}
