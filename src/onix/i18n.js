@@ -104,7 +104,21 @@ export default class $i18n {
 		Object.keys(data).forEach(key => {
 			this._langs[lang][key] = data[key];
 		});
-	};
+	}
+
+	/**
+	 * Add a new language from the structured file - lang.key.key2 = { langKey: trans, langKey2: another trans... }
+	 *
+	 * @param {Array[String]} langs All language variations
+	 * @param {Object} data
+	 * @memberof $i18n
+	 * @method addStructuredLanguage
+	 */
+	addStructuredLanguage(langs, data) {
+		langs.forEach(langKey => {
+			this.addLanguage(langKey, this._getLanguage(data, {}, null, langKey));
+		});
+	}
 
 	/**
 	 * Set new language by his key.
@@ -256,10 +270,63 @@ export default class $i18n {
 			});
 
 			Object.keys(finalReplace).forEach(key => {
-				translate = translate.replaceAll(key, finalReplace[key]);
+				translate = this._replaceAll(translate, key, finalReplace[key]);
 			});
 		}
 
 		return translate;
+	}
+
+	/**
+	 * Add a new language from the structured file - this function parses one lang from the data object.
+	 * It si recursive.
+	 *
+	 * @param {Object} curObj Current data object - read
+	 * @param {Object} langObj Current lang object - write
+	 * @param {Function} setFn Callback function for set a value
+	 * @param {String} langKey Current language key
+	 * @memberof $i18n
+	 * @method _getLanguage
+	 */
+	_getLanguage(curObj, langObj, setFn, langKey) {
+		if ($common.isObject(curObj)) {
+			Object.keys(curObj).forEach(curKey => {
+				let value = curObj[curKey];
+
+				if (typeof value === "string" && curKey == langKey) {
+					if (setFn) {
+						setFn(value);
+					}
+					else {
+						langObj[curKey] = value;
+					}
+				}
+				else if ($common.isObject(value)) {
+					if (!(curKey in langObj)) {
+						langObj[curKey] = {};
+					}
+
+					let newSetFn = value => {
+						langObj[curKey] = value;
+					};
+
+					this._getLanguage(curObj[curKey], langObj[curKey], newSetFn, langKey);
+				}
+			});
+		}
+
+		return langObj;
+	}
+
+	/**
+	 * Replace all occurences inside string.
+	 * 
+	 * @param  {String} source Source string
+	 * @param  {String} search Lookup phrase
+	 * @param  {String} replacement Replace phrase
+	 * @return {String}
+	 */
+	_replaceAll(source, search, replacement) {
+		return source.split(search).join(replacement);
 	}
 }

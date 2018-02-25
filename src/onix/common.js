@@ -519,6 +519,30 @@ export function split(txt, delimeter) {
 };
 
 /**
+ * String format. First argument is source string, rest are replace arguments, which start from the 0.
+ * strFormat("hi {0}", "Roman") => "hi Roman" {0..n}, args...
+ *
+ * @param {Array[String]} args
+ * @return {String}
+ */
+export function strFormat() {
+	let args = Array.prototype.slice.call(arguments);
+
+	if (args.length) {
+		let output = args.shift();
+
+		args.forEach((arg, ind) => {
+			output = output.replace(new RegExp("{\\s*" + ind + "\\s*}", "g"), arg);
+		});
+
+		return output;
+	}
+	else {
+		return "";
+	}
+};
+
+/**
  * Object copy, from source to dest.
  *
  * @param  {Object} dest
@@ -684,11 +708,11 @@ function _compare(leftObj, rightObj, path, output) {
 				_compare(itemLeft, itemRight, path.concat(key), output);
 			}
 			else {
-				output.push("missing object at path \"{0}\"".format(curPath));
+				output.push(strFormat("missing object at path \"{0}\"", curPath));
 			}
 		}
 		else if (typeof itemLeft === "string" && typeof itemRight !== "string") {
-			output.push("wrong type at path \"{0}\"".format(curPath));
+			output.push(strFormat("wrong type at path \"{0}\"", curPath));
 		}
 	});
 
