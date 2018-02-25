@@ -22,7 +22,7 @@ class Main {
 	}
 
 	async _run() {
-		let camera = new Camera(1920, 1080);
+		let camera = new Camera(320 * 0.5, 240 * 0.5);
 		camera.setEye(new Vector3(-0.067, 0.237, 0.184));
 		camera.setTransformationMatrix([
 			[-0.982, 0.064, 0.177],
