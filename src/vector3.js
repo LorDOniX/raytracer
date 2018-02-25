@@ -1,4 +1,4 @@
-export default class Vector3 {
+class Vector3 {
 	constructor(x = 0, y = 0, z = 0) {
 		this._x = x;
 		this._y = y;
@@ -8,6 +8,12 @@ export default class Vector3 {
 	get x() { return this._x; }
 	get y() { return this._y; }
 	get z() { return this._z; }
+
+	alignValues(min, max) {
+		this._x = Math.max(min, Math.min(this._x, max));
+		this._y = Math.max(min, Math.min(this._y, max));
+		this._z = Math.max(min, Math.min(this._z, max));
+	}
 
 	setXYZ(x = 0, y = 0, z = 0) {
 		this._x = x;
@@ -169,3 +175,5 @@ export default class Vector3 {
 		}
 	}
 }
+
+module.exports = Vector3;

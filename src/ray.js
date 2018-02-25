@@ -1,6 +1,6 @@
-import Vector3 from "./vector3";
+const Vector3 = require("./vector3");
 
-export default class Ray {
+class Ray {
 	constructor(origin, direction, bgDirection) {
 		this._origin = origin || new Vector3();
 		this._direction = direction || new Vector3();
@@ -54,3 +54,5 @@ export default class Ray {
 		}
 	}
 }
+
+module.exports = Ray;

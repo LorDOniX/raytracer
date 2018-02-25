@@ -1,32 +1,31 @@
-import Graphics from "./graphics";
-import Color from "./color";
-import Cubemap from "./cubemap";
-import Material from "./material";
-import Light from "./light";
-import Vector3 from "./vector3";
-import Ray from "./ray";
+const Jimp = require('jimp');
+const Color = require("./color");
+const Cubemap = require("./cubemap");
+const Material = require("./material");
+const Light = require("./light");
+const Vector3 = require("./vector3");
+const Ray = require("./ray");
 
 // vzduch a material
 const IOR_AIR = 1.000293;
 const IOR_MATERIAL = 1.5;
 
-export default class Render {
+class Render {
 	constructor(camera, bvh, opts) {
 		this._opts = Object.assign({
-			threadsCount: 4, // nasobky 2
 			phong: true,
 			background: true,
 			maxDepth: 6,
 			minCoefficient: 1e-2,
-			startTime: 0
+			x: [0, camera.width],
+			y: [0, camera.height],
+			debug: false
 		}, opts);
 		this._camera = camera;
 		this._bvh = bvh;
-		this._graphics = new Graphics(document.getElementById("canvas"), camera);
 		this._cubemap = new Cubemap();
 		this._startTime = 0;
-		this._doneThreads = 0;
-		this._threads = 0;
+		this._data = [];
 
 		// material
 		this._materials = [new Material()];
@@ -37,53 +36,46 @@ export default class Render {
 		this._lights[1].diffuse.setXYZ(0.3, 0.3, 0.7);
 	}
 
-	async render() {
-		if (this._opts.background) {
-			await this._cubemap.load();
-		}
-		
-		this._startTime = Date.now();
-
-		console.log(`Render`);
-		console.log(`Pre render time ${((Date.now() - this._opts.startTime) / 1000).toFixed(2)}s`);
-		console.log(`Render starting with ${ this._opts.threadsCount } threads...`);
-
-		let columnStep = Math.max(this._opts.threadsCount * 0.5, 1);
-		let rowStep = Math.max(this._opts.threadsCount * 0.5, 1);
-		let columnWidth = this._camera.width / columnStep;
-		let rowHeight = this._camera.height / rowStep;
-
-		for (let j = 0; j < rowStep; j++) {
-			for (let i = 0; i < columnStep; i++) {
-				this._renderPart(i * columnWidth, (i + 1) * columnWidth, j * rowHeight, (j + 1) * rowHeight);
-			}
-		}
+	get data() {
+		return this._data;
 	}
 
-	_renderPart(fromX, toX, fromY, toY) {
-		this._threads++;
-
-		setTimeout(() => {
-			let time = Date.now();
-
-			for (let y = fromY; y < toY; y++) {
-				for (let x = fromX; x < toX; x++) {
-					let ray = this._camera.generateRay(x, y);
-					let color = this._raytrace(ray);
-
-					// nastavime barvu
-					this._graphics.putPixel(x, y, color);
-				}
+	async render() {
+		if (this._opts.background) {
+			if (this._opts.debug) {
+				console.log(`Render`);
+				console.log(`Render loading cubemap images...`);
 			}
+			
+			await this._cubemap.load();
 
-			this._doneThreads++;
-
-			console.log(`Render status ${Math.round(this._doneThreads / this._threads * 100)}%`);
-
-			if (this._threads == this._doneThreads) {
-				console.log(`Render time ${((Date.now() - this._startTime) / 1000).toFixed(2)}s`);
+			if (this._opts.debug) {
+				console.log(`Images are loaded`);
 			}
-		}, 0);
+		}
+		else if (this._opts.debug) {
+			console.log(`Render`);
+		}
+
+		if (this._opts.debug) {
+			console.log(`Starting rendering...`);
+		}
+
+		this._startTime = Date.now();
+
+		let time = Date.now();
+
+		for (let y = this._opts.y[0]; y < this._opts.y[1]; y++) {
+			for (let x = this._opts.x[0]; x < this._opts.x[1]; x++) {
+				let ray = this._camera.generateRay(x, y);
+				let color = this._raytrace(ray);
+
+				// nastavime barvu
+				let hxColor = Jimp.rgbaToInt(color.r, color.g, color.b, color.a);
+
+				this._data.push(hxColor);
+			}
+		}
 	}
 
 	_raytrace(rayArg) {
@@ -217,7 +209,11 @@ export default class Render {
 			}
 		}
 		else {
+			// omezeni - todo, nekde je chyba, barva mimo <0;1>
+			color.alignValues(0, 1);
 			return Color.fromVector3(color, true);
 		}
 	}
 }
+
+module.exports = Render;

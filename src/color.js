@@ -1,4 +1,4 @@
-export default class Color {
+class Color {
 	constructor(r, g, b, a) {
 		this._r = r || 0;
 		this._g = g || 0;
@@ -48,3 +48,5 @@ export default class Color {
 		return new Color(r, g, b);
 	}
 }
+
+module.exports = Color;

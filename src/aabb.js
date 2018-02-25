@@ -1,6 +1,6 @@
-import Vector3 from "./vector3";
+const Vector3 = require("./vector3");
 
-export default class AABB {
+class AABB {
 	constructor(minVec, maxVec) {
 		this._minVec = minVec || new Vector3(Infinity, Infinity, Infinity);
 		this._maxVec = maxVec || new Vector3(-Infinity, -Infinity, -Infinity);
@@ -34,3 +34,5 @@ export default class AABB {
 		return new Vector3((this._minVec.x + this._maxVec.x) / 2, (this._minVec.y + this._maxVec.y) / 2, (this._minVec.z + this._maxVec.z) / 2);
 	}
 }
+
+module.exports = AABB;

@@ -1,6 +1,6 @@
-import Vector3 from "./vector3";
+const Vector3 = require("./vector3");
 
-export default class Light {
+class Light {
 	constructor(position) {
 		this._position = position || new Vector3();
 		// - okolo ni
@@ -25,3 +25,5 @@ export default class Light {
 		return this._specular;
 	}
 }
+
+module.exports = Light;

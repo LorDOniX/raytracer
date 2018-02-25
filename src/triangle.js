@@ -1,7 +1,7 @@
-import Vector3 from "./vector3";
-import AABB from "./aabb";
+const Vector3 = require("./vector3");
+const AABB = require("./aabb");
 
-export default class Triangle {
+class Triangle {
 	constructor(p0, p1, p2, pvn0, pvn1, pvn2, flipNormal) {
 		this._vertices = [
 			p0 || new Vector3(),
@@ -104,3 +104,5 @@ export default class Triangle {
 		this._perFaceNormal.normalize();
 	}
 }
+
+module.exports = Triangle;

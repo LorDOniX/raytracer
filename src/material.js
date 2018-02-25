@@ -1,6 +1,6 @@
-import Vector3 from "./vector3";
+const Vector3 = require("./vector3");
 
-export default class Material {
+class Material {
 	constructor() {
 		// - okolo ni
 		this._ambiente = new Vector3(0.1, 0.1, 0.1);
@@ -41,3 +41,5 @@ export default class Material {
 		return this._ior;
 	}
 }
+
+module.exports = Material;

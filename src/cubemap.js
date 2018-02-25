@@ -1,26 +1,27 @@
-import Color from "./color";
-import Vector3 from "./vector3";
+const Jimp = require("jimp");
+const Color = require("./color");
+const Vector3 = require("./vector3");
 
-export default class Cubemap {
+class Cubemap {
 	constructor() {
 		this._images = {
 			posX: {
-				src: "/img/posx.jpg"
+				src: "../static/img/posx.jpg"
 			},
 			negX: {
-				src: "/img/negx.jpg"
+				src: "../static/img/negx.jpg"
 			},
 			posY: {
-				src: "/img/posy.jpg"
+				src: "../static/img/posy.jpg"
 			},
 			negY: {
-				src: "/img/negy.jpg"
+				src: "../static/img/negy.jpg"
 			},
 			posZ: {
-				src: "/img/posz.jpg"
+				src: "../static/img/posz.jpg"
 			},
 			negZ: {
-				src: "/img/negz.jpg"
+				src: "../static/img/negz.jpg"
 			}
 		};
 	}
@@ -87,36 +88,26 @@ export default class Cubemap {
 	}
 
 	_loadImage(imgItem) {
-		return new Promise(resolve => {
-			let image = new Image();
-			image.src = imgItem.src;
-			image.addEventListener("load", e => {
-				let canvas = document.createElement("canvas");
-				canvas.width = image.width;
-				canvas.height = image.height;
-				let ctx = canvas.getContext("2d");
-				ctx.drawImage(image, 0, 0);
+		return new Promise((resolve, reject) => {
+			Jimp.read(imgItem.src, (err, imgData) => {
+				if (err) {
+					console.log(err);
+					reject();
+				}
+				else {
+					imgItem.width = imgData.bitmap.width;
+					imgItem.height = imgData.bitmap.height;
+					imgItem.getPixel = (x, y) => {
+						let color = Jimp.intToRGBA(imgData.getPixelColor(x, y));
 
-				// pridame atributy
-				imgItem.width = image.width;
-				imgItem.height = image.height;
-				imgItem.ctx = ctx;
+						// rgb - bez alphy
+						return new Vector3(color.r, color.g, color.b);
+					};
 
-				resolve();
+					resolve();
+				}
 			});
-			image.addEventListener("error", e => {
-				resolve();
-			});
-			imgItem.img = image;
 		});
-	}
-
-	_getPixel(imgItem, x, y) {
-		let imgData = imgItem.ctx.getImageData(x, y, 1, 1);
-		let data = imgData.data;
-
-		// rgb - bez alphy
-		return new Vector3(data[0], data[1], data[2]);
 	}
 
 	// http://www.devmaster.net/articles/raytracing_series/part6.php
@@ -160,10 +151,10 @@ export default class Cubemap {
 		}
 
 		// 4 barvy pixelu
-		let a = this._getPixel(imgItem, p1x, p1y);
-		let b = this._getPixel(imgItem, p2x, p2y);
-		let c = this._getPixel(imgItem, p3x, p3y);
-		let d = this._getPixel(imgItem, p4x, p4y);
+		let a = imgItem.getPixel(p1x, p1y);
+		let b = imgItem.getPixel(p2x, p2y);
+		let c = imgItem.getPixel(p3x, p3y);
+		let d = imgItem.getPixel(p4x, p4y);
 		let S = a.mul((1 - p) * (1 - q)).plus(
 			c.mul((1 - p) * q),
 			b.mul(p * (1 - q)),
@@ -173,3 +164,5 @@ export default class Cubemap {
 		return Color.fromVector3(S);
 	}
 }
+
+module.exports = Cubemap;

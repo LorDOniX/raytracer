@@ -1,12 +1,13 @@
-import Vector3 from "./vector3";
-import Triangle from "./triangle";
+const Vector3 = require("./vector3");
+const Triangle = require("./triangle");
 
-export default class Geometry {
-	constructor(ply, opts) {
-		this._ply = ply;
+class Geometry {
+	constructor(elements, opts) {
+		this._elements = elements;
 		this._opts = Object.assign({
 			flipNormals: false,
-			scale: 1
+			scale: 1,
+			debug: false
 		}, opts);
 		this._items = [];
 		this._triangles = [];
@@ -21,10 +22,8 @@ export default class Geometry {
 	}
 
 	_create() {
-		let elements = this._ply.elements;
-
-		if ("vertex" in elements) {
-			elements.vertex.items.forEach(vertex => {
+		if ("vertex" in this._elements) {
+			this._elements.vertex.items.forEach(vertex => {
 				let position = new Vector3(vertex.x, vertex.y, vertex.z);
 				let normal = new Vector3(vertex.x, vertex.y, vertex.z);
 				let textureCoord = new Vector3();
@@ -44,8 +43,8 @@ export default class Geometry {
 			});
 		}
 
-		if ("face" in elements) {
-			elements.face.items.forEach(face => {
+		if ("face" in this._elements) {
+			this._elements.face.items.forEach(face => {
 				let triangleItem = {
 					ids: face.ids,
 					triangle: null
@@ -81,9 +80,11 @@ export default class Geometry {
 	}
 
 	_updatePerVertexNormals(flipNormals) {
-		console.log("Geometry");
-		console.log(`Triangles : ${ this._triangles.length }`);
-		console.log(`Calculating normals [${flipNormals ? "flip" : "noflip"}]...`);
+		if (this._opts.debug) {
+			console.log("Geometry");
+			console.log(`Triangles : ${ this._triangles.length }`);
+			console.log(`Calculating normals [${flipNormals ? "flip" : "noflip"}]...`);
+		}
 
 		let time = Date.now();
 
@@ -111,6 +112,10 @@ export default class Geometry {
 			}
 		});
 
-		console.log(`Normals time ${((Date.now() - time) / 1000).toFixed(2)}s`);
+		if (this._opts.debug) {
+			console.log(`Normals time ${((Date.now() - time) / 1000).toFixed(2)}s`);
+		}
 	}
 }
+
+module.exports = Geometry;

@@ -1,10 +1,10 @@
-import Vector3 from "./vector3";
+const Vector3 = require("./vector3");
 
 // anything that avoids division overflow
 const SMALL_NUM = 0.00000001;
 const SORT_MAX_LVLS = 300;
 
-export function rayTriangleIntersection97(ray, triangle) {
+exports.rayTriangleIntersection97 = (ray, triangle) => {
 	// get triangle edge vectors and plane normal
 	let u = triangle.vertices[1].minus(triangle.vertices[0]);
 	let v = triangle.vertices[2].minus(triangle.vertices[0]);
@@ -49,11 +49,11 @@ export function rayTriangleIntersection97(ray, triangle) {
 	ray.setTarget(r, triangle);
 }
 
-export function deg2Rad(deg) {
+exports.deg2Rad = (deg) => {
 	return (deg / 180 * Math.PI);
 }
 
-export function sortTriangles(items, from, n, axis) {
+exports.sortTriangles = (items, from, n, axis) => {
 	let beg = new Array(SORT_MAX_LVLS);
 	let end = new Array(SORT_MAX_LVLS);
 	beg[0] = 0;
@@ -106,7 +106,7 @@ export function sortTriangles(items, from, n, axis) {
 	}
 }
 
-export function rayBoxIntersection(ray, aabb, t0, t1) {
+exports.rayBoxIntersection = (ray, aabb, t0, t1) => {
 	let l1 = (aabb.minVec.x - ray.origin.x) * ray.inverted.x;
 	let l2 = (aabb.maxVec.x - ray.origin.x) * ray.inverted.x;
 	let lmin = Math.min(l1,l2);

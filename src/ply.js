@@ -1,12 +1,11 @@
-import * as $http from "./onix/http";
-
+const fs = require("fs");
 const TYPES = {
 	END_HEADER: "end_header",
 	ELEMENT: /element (\w+) (\d+)/,
 	PROPERTY: /property (\w+) (.*)$/
 };
 
-export default class Ply {
+class Ply {
 	constructor(opts) {
 		this._opts = Object.assign({
 			switchYZ: true
@@ -15,20 +14,11 @@ export default class Ply {
 		this._elements = null;
 	}
 
-	load(url) {
-		return new Promise((resolve, reject) => {
-			$http.createRequest({
-				url
-			}).then(data => {
-				this._lines = data.data.split("\n");
+	load(path) {
+		let data = fs.readFileSync(path, "utf-8");
+		this._lines = data.split("\n");
 
-				this._parse();
-				resolve(this._elements);
-			}, e => {
-				console.error(e);
-				reject(e);
-			});
-		});
+		this._parse();
 	}
 
 	get elements() {
@@ -153,3 +143,5 @@ export default class Ply {
 		element.items.push(newItem);
 	}
 }
+
+module.exports = Ply;

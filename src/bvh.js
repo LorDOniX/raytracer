@@ -1,5 +1,5 @@
-import * as math from "./math";
-import AABB from "./aabb";
+const math = require("./math");
+const AABB = require("./aabb");
 
 class BVHNode {
 	constructor(from, to, triangles) {
@@ -48,7 +48,7 @@ class BVHNode {
 	}
 }
 
-export default class BVH {
+class BVH {
 	constructor(geometry, opts) {
 		this._opts = Object.assign({
 			maxLeafItems: 8
@@ -61,8 +61,16 @@ export default class BVH {
 		// zaklad zasobnikova metoda
 		this._root = this._buildTree(0, this._triangles.length - 1, 0, 2);
 		this._nodes++;
+	}
 
-		this._showInfo();
+	showInfo() {
+		console.log(`BVH`);
+		console.log(`Leafs      : ${ this._leafs }`);
+		console.log(`Nodes      : ${ this._nodes }`);
+		console.log(`Items      : ${ this._triangles.length }`);
+		console.log(`Max depth  : ${ this._maxDepth }`);
+		console.log(`Leaf items : ${ this._opts.maxLeafItems }`);
+		console.log(`Bounds     : ${ this._root.bounds().minVec } x ${ this._root.bounds().maxVec }`);
 	}
 
 	traverse(ray) {
@@ -110,14 +118,6 @@ export default class BVH {
 			}
 		}
 	}
-
-	_showInfo() {
-		console.log(`BVH`);
-		console.log(`Leafs      : ${ this._leafs }`);
-		console.log(`Nodes      : ${ this._nodes }`);
-		console.log(`Items      : ${ this._triangles.length }`);
-		console.log(`Max depth  : ${ this._maxDepth }`);
-		console.log(`Leaf items : ${ this._opts.maxLeafItems }`);
-		console.log(`Bounds     : ${ this._root.bounds().minVec } x ${ this._root.bounds().maxVec }`);
-	}
 }
+
+module.exports = BVH;

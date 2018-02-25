@@ -1,8 +1,8 @@
-import Vector3 from "./vector3";
-import Ray from "./ray";
-import * as math from "./math";
+const Vector3 = require("./vector3");
+const Ray = require("./ray");
+const math = require("./math");
 
-export default class Camera {
+class Camera {
 	constructor(width = 640, height = 480, fovY = 45) {
 		// sirka vyska obrazku
 		this._width = width;
@@ -16,8 +16,6 @@ export default class Camera {
 		this._eye = new Vector3();
 		// transformacni matice
 		this._tm = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-
-		this._showInfo();
 	}
 
 	get width() {
@@ -34,6 +32,12 @@ export default class Camera {
 
 	setTransformationMatrix(tm) {
 		this._tm = tm;
+	}
+
+	showInfo() {
+		console.log(`Camera`);
+		console.log(`Width      : ${ this._width }px`);
+		console.log(`Height     : ${ this._height }px`);
 	}
 
 	generateRay(sx, sy) {
@@ -61,10 +65,6 @@ export default class Camera {
 		// paprsek
 		return (new Ray(this._eye, directionTransformed, bgDirection));
 	}
-
-	_showInfo() {
-		console.log(`Camera`);
-		console.log(`Width      : ${ this._width }px`);
-		console.log(`Height     : ${ this._height }px`);
-	}
 }
+
+module.exports = Camera;
