@@ -13,11 +13,11 @@ class Main {
 	constructor() {
 		// require('os').cpus().length;
 		this._threadsCount = 4;
-		this._width = 320;
-		this._height = 240;
+		this._width = 1920;
+		this._height = 1080;
 		this._workersCount = 0;
 		this._doneCount = 0;
-		this._startTime = Date.now();
+		this._startTime = 0;
 		this._image = null;
 		this._ply = new Ply();
 
@@ -34,6 +34,7 @@ class Main {
 		let rowHeight = this._height / rowStep;
 
 		console.log("Start main...");
+		this._startTime = Date.now();
 
 		// pro jednotlive radky
 		for (let j = 0; j < rowStep; j++) {
