@@ -1,6 +1,10 @@
 const Jimp = require("jimp");
+const shm = require('shm-typed-array');
 const Color = require("./color");
 const Vector3 = require("./vector3");
+
+const RGB_LEN = 3;
+const RGBA_LEN = 4;
 
 class Cubemap {
 	constructor() {
@@ -95,14 +99,24 @@ class Cubemap {
 					reject();
 				}
 				else {
-					imgItem.width = imgData.bitmap.width;
-					imgItem.height = imgData.bitmap.height;
-					imgItem.getPixel = (x, y) => {
-						let color = Jimp.intToRGBA(imgData.getPixelColor(x, y));
+					let width = imgData.bitmap.width;
+					let height = imgData.bitmap.height;
+					let parts = width * height;
+					let len = width * height * RGB_LEN;
+					let buf = shm.create(len, "Uint8ClampedArray");
+					let data = imgData.bitmap.data;
 
-						// rgb - bez alphy
-						return new Vector3(color.r, color.g, color.b);
-					};
+					for (let i = 0; i < parts; i++) {
+						buf[i * RGB_LEN] = data[i * RGBA_LEN];
+						buf[i * RGB_LEN + 1] = data[i * RGBA_LEN + 1];
+						buf[i * RGB_LEN + 2] = data[i * RGBA_LEN + 2];
+					}
+
+					imgItem.width = width;
+					imgItem.height = height;
+					imgItem.len = len;
+					imgItem.buf = buf;
+					imgItem.key = buf.key;
 
 					resolve();
 				}
@@ -151,10 +165,10 @@ class Cubemap {
 		}
 
 		// 4 barvy pixelu
-		let a = imgItem.getPixel(p1x, p1y);
-		let b = imgItem.getPixel(p2x, p2y);
-		let c = imgItem.getPixel(p3x, p3y);
-		let d = imgItem.getPixel(p4x, p4y);
+		let a = this._getPixel(imgItem, p1x, p1y);
+		let b = this._getPixel(imgItem, p2x, p2y);
+		let c = this._getPixel(imgItem, p3x, p3y);
+		let d = this._getPixel(imgItem, p4x, p4y);
 		let S = a.mul((1 - p) * (1 - q)).plus(
 			c.mul((1 - p) * q),
 			b.mul(p * (1 - q)),
@@ -162,6 +176,14 @@ class Cubemap {
 		);
 
 		return Color.fromVector3(S);
+	}
+
+	_getPixel(imgItem, x, y) {
+		let pos = (x + y * imgItem.width) * RGB_LEN;
+		let data = imgItem.buf;
+
+		// rgb - bez alphy
+		return new Vector3(data[pos], data[pos + 1], data[pos + 2]);
 	}
 }
 

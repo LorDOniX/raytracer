@@ -1,5 +1,6 @@
 const { fork } = require('child_process');
 const shm = require('shm-typed-array');
+const os = require('os');
 const Jimp = require('jimp');
 const Ply = require("./ply");
 
@@ -12,8 +13,7 @@ const SIZE = {
 
 class Main {
 	constructor() {
-		// require('os').cpus().length;
-		this._threadsCount = 4;
+		this._threadsCount = os.cpus().length;
 		this._width = 1920;
 		this._height = 1080;
 		this._workersCount = 0;
