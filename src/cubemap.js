@@ -7,7 +7,7 @@ const RGB_LEN = 3;
 const RGBA_LEN = 4;
 
 class Cubemap {
-	constructor() {
+	constructor(data) {
 		this._images = {
 			posX: {
 				src: "../static/img/posx.jpg"
@@ -28,6 +28,14 @@ class Cubemap {
 				src: "../static/img/negz.jpg"
 			}
 		};
+
+		if (data && Array.isArray(data)) {
+			data.forEach(item => {
+				this._images[item.src] = Object.assign(this._images[item.src], item, {
+					buf: shm.get(item.key)
+				});
+			});
+		}
 	}
 
 	load() {
@@ -89,6 +97,23 @@ class Cubemap {
 		}
 
 		return this._bilinearInterpolation(x, y, imgItem);
+	}
+
+	getData() {
+		let items = [];
+
+		Object.keys(this._images).forEach(src => {
+			let item = this._images[src];
+
+			items.push({
+				src,
+				width: item.width,
+				height: item.height,
+				key: item.key
+			});
+		});
+
+		return items;
 	}
 
 	_loadImage(imgItem) {

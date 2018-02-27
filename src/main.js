@@ -3,6 +3,7 @@ const shm = require('shm-typed-array');
 const os = require('os');
 const Jimp = require('jimp');
 const Ply = require("./ply");
+const Cubemap = require("./cubemap");
 
 const SIZE = {
 	TRI_69K: "../static/model/bun_zipper.ply",
@@ -26,19 +27,28 @@ class Main {
 	}
 
 	async _run() {
+		console.log("Start main");
+		console.log("Loading PLY model...");
+		let time = Date.now();
 		await this._ply.load(SIZE.TRI_69K);
+		console.log(`PLY model time ${((Date.now() - time) / 1000).toFixed(2)}s`);
 		// obrazek
 		this._image = await this._getImage();
-
+		console.log("Loading cubemap images...");
+		time = Date.now();
+		let cubemap = new Cubemap();
+		await cubemap.load();
+		let cubemapData = cubemap.getData();
+		console.log(`Cubemap images time ${((Date.now() - time) / 1000).toFixed(2)}s`);
 		// raytrace
-		let rowStep = Math.max(this._threadsCount, 1);
-		let rowHeight = this._height / rowStep;
+		let threadsCount = Math.max(this._threadsCount, 1);
+		let rowHeight = this._height / threadsCount;
 
-		console.log("Start main...");
+		console.log(`Starting ${threadsCount} workers...`);
 		this._startTime = Date.now();
 
 		// pro jednotlive radky
-		for (let j = 0; j < rowStep; j++) {
+		for (let j = 0; j < threadsCount; j++) {
 			this._workersCount++;
 
 			let worker = fork("single.js");
@@ -49,6 +59,7 @@ class Main {
 				height: this._height,
 				startY: j * rowHeight,
 				endY: (j + 1) * rowHeight,
+				cubemapData,
 				debug: j == 0
 			};
 
@@ -109,11 +120,11 @@ class Main {
 		console.log(`Progress ${(this._doneCount / this._threadsCount * 100).toFixed(2)}%`);
 
 		if (!this._workersCount) {
-			console.log(`Main time ${((Date.now() - this._startTime) / 1000).toFixed(2)}s`);
+			shm.detachAll();
 
 			this._image.write("../raytracing.png");
 
-			console.log(`Main time end`);
+			console.log(`Main time end at ${((Date.now() - this._startTime) / 1000).toFixed(2)}s`);
 		}
 	}
 }

@@ -13,16 +13,16 @@ class Render {
 	constructor(camera, bvh, opts) {
 		this._opts = Object.assign({
 			phong: true,
-			background: true,
 			maxDepth: 6,
 			minCoefficient: 1e-2,
 			x: [0, camera.width],
 			y: [0, camera.height],
-			debug: false
+			debug: false,
+			cubemapData: null
 		}, opts);
 		this._camera = camera;
 		this._bvh = bvh;
-		this._cubemap = new Cubemap();
+		this._cubemap = this._opts.cubemapData ? new Cubemap(this._opts.cubemapData) : null;
 		this._startTime = 0;
 		this._data = [];
 
@@ -39,24 +39,9 @@ class Render {
 		return this._data;
 	}
 
-	async render() {
-		if (this._opts.background) {
-			if (this._opts.debug) {
-				console.log(`Render`);
-				console.log(`Render loading cubemap images...`);
-			}
-			
-			await this._cubemap.load();
-
-			if (this._opts.debug) {
-				console.log(`Images are loaded`);
-			}
-		}
-		else if (this._opts.debug) {
-			console.log(`Render`);
-		}
-
+	render() {
 		if (this._opts.debug) {
+			console.log(`Render`);
 			console.log(`Starting rendering...`);
 		}
 
@@ -200,7 +185,7 @@ class Render {
 
 		// nic jsme nezasahli ?
 		if (hits == 0) {
-			if (this._opts.background) {
+			if (this._cubemap) {
 				return this._cubemap.getColor(ray.bgDirection);
 			}
 			else {
