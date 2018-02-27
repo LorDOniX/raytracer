@@ -1,4 +1,5 @@
 const { fork } = require('child_process');
+const shm = require('shm-typed-array');
 const Jimp = require('jimp');
 const Ply = require("./ply");
 
@@ -52,9 +53,11 @@ class Main {
 			};
 
 			worker.on("message", msg => {
-				let data = JSON.parse(msg);
+				let msgData = JSON.parse(msg);
 
-				this._setData(sendData, data);
+				this._setData(sendData, msgData);
+
+				worker.kill();
 			});
 
 			worker.send(JSON.stringify(sendData));
@@ -74,16 +77,22 @@ class Main {
 		});
 	}
 
-	_setData(sendData, data) {
+	_setData(sendData, msgData) {
 		this._doneCount++;
 		this._workersCount--;
 
 		// canvas
 		let x = 0;
 		let y = sendData.startY;
-		
-		for (let i = 0, max = data.length; i < max; i++) {
-			this._image.setPixelColor(data[i], x, y);
+		let buf = shm.get(msgData.key);
+		let blockSize = 3;
+		let parts = msgData.len / blockSize;
+
+		// [r,g,b,r,g,b]...
+		for (let i = 0; i < parts; i++) {
+			let hxColor = Jimp.rgbaToInt(buf[i * blockSize], buf[i * blockSize + 1], buf[i * blockSize + 2], 255);
+
+			this._image.setPixelColor(hxColor, x, y);
 
 			// posuneme
 			x++;
@@ -93,6 +102,9 @@ class Main {
 				y++;
 			}
 		}
+
+		// odstranime pamet
+		shm.detach(msgData.key);
 
 		console.log(`Progress ${(this._doneCount / this._threadsCount * 100).toFixed(2)}%`);
 

@@ -1,4 +1,3 @@
-const Jimp = require('jimp');
 const Color = require("./color");
 const Cubemap = require("./cubemap");
 const Material = require("./material");
@@ -71,9 +70,9 @@ class Render {
 				let color = this._raytrace(ray);
 
 				// nastavime barvu
-				let hxColor = Jimp.rgbaToInt(color.r, color.g, color.b, color.a);
-
-				this._data.push(hxColor);
+				this._data.push(color.r);
+				this._data.push(color.g);
+				this._data.push(color.b);
 			}
 		}
 	}

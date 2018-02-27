@@ -1,3 +1,4 @@
+const shm = require('shm-typed-array');
 const Geometry = require("./geometry");
 const Camera = require("./camera");
 const Vector3 = require("./vector3");
@@ -34,9 +35,18 @@ async function run(elements, width, height, yInt, debug) {
 	});
 	await render.render();
 
-	let data = render.data;
-	process.send(JSON.stringify(data));
-	process.exit(0);
+	let colorsArray = render.data;
+	let len = colorsArray.length;
+	let buf = shm.create(len, "Uint8ClampedArray");
+
+	for (let i = 0; i < len; i++) {
+		buf[i] = colorsArray[i];
+	}
+
+	process.send(JSON.stringify({
+		key: buf.key,
+		len
+	}));
 }
 
 process.on('message', msg => {
