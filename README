@@ -34,30 +34,3 @@ TODO:
 * render.h [DONE]
 * stdafx.h [DONE]
 * structs.h [DONE]
-
-NOTES:
-
-var myImg = new Image();
-myImg.src = 'image.jpg';
-var context = document.getElementById('canvas').getContext('2d');
-context.drawImage(myImg, 0, 0);
-data = context.getImageData(x, y, 1, 1).data;
-
-ADDON:
-
-
-raytracer.factory("XXX", [
-	"AAA",
-function(
-	AAA
-) {
-	
-	var XXX = function() {
-	};
-
-	XXX.prototype. = function() {
-
-	};
-	
-	return XXX;
-});
