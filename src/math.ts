@@ -1,10 +1,8 @@
 import type Vector3 from "./vector3";
-import type { Axis } from "./vector3";
 import type Ray from "./ray";
 
 // anything that avoids division overflow
 const SMALL_NUM = 0.00000001;
-const SORT_MAX_LVLS = 300;
 
 /**
  * Prusecik paprsku s trojuhelnikem (Moller-Trumbore), zasah ulozi do paprsku i s barycentrickymi
@@ -62,70 +60,6 @@ export function rayTriangleIntersection(ray: Ray, vertices: Float64Array, index:
 
 export function deg2Rad(deg: number): number {
 	return (deg / 180 * Math.PI);
-}
-
-// teziste boxu trojuhelniku v ose axis
-export function triangleCentroid(vertices: Float64Array, index: number, axis: Axis): number {
-	let a = vertices[index * 9 + axis];
-	let b = vertices[index * 9 + 3 + axis];
-	let c = vertices[index * 9 + 6 + axis];
-
-	return (Math.min(Math.min(a, b), c) + Math.max(Math.max(a, b), c)) / 2;
-}
-
-// seradi indexy trojuhelniku items[from..from + n - 1] podle teziste v ose axis
-export function sortTriangles(items: Int32Array, vertices: Float64Array, from: number, n: number, axis: Axis): void {
-	let beg: number[] = new Array(SORT_MAX_LVLS);
-	let end: number[] = new Array(SORT_MAX_LVLS);
-	beg[0] = 0;
-	end[0] = n;
-	
-	let i = 0;
-
-	while (i >= 0) {
-		let L = beg[i];
-		let R = end[i] - 1;
-		
-		if (L < R) {
-			let piv = items[from + L];
-			let pivValue = triangleCentroid(vertices, piv, axis);
-			
-			while (L < R) {
-				while (triangleCentroid(vertices, items[from + R], axis) >= pivValue && L < R) {
-					R--;
-				}
-
-				if (L < R) {
-					items[from + L++] = items[from + R];
-				}
-
-				while (triangleCentroid(vertices, items[from + L], axis) <= pivValue && L < R) {
-					L++;
-				}
-
-				if (L < R) {
-					items[from + R--] = items[from + L];
-				}
-			}
-			
-			items[from + L] = piv;
-			beg[i + 1] = L+1;
-			end[i + 1] = end[i];
-			end[i++] = L;
-			
-			if (end[i] - beg[i] > end[i - 1] - beg[i - 1]) {
-				let swap = beg[i];
-				beg[i] = beg[i - 1];
-				beg[i - 1] = swap;
-				swap = end[i];
-				end[i] = end[i-1];
-				end[i - 1] = swap;
-			}
-		}
-		else {
-			i--;
-		}
-	}
 }
 
 /**

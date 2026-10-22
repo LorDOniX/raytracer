@@ -31,6 +31,7 @@ Podklad pro další práci (i pro Clauda). Spuštění: „přečti `PLAN.md` a 
     číslech a normál ploch po 3 číslech na trojúhelník), `src/bvh.ts` (`_bounds` 6 čísel na uzel,
     `_items` 2 čísla na uzel: list `(first, count)`, vnitřní uzel `(left, -1)`). `Geometry` postaví `Mesh`
     z PLY, `BVH` ho při stavbě přeřadí tak, aby listy měly souvislé úseky trojúhelníků.
+    Stavba (`BVHBuilder`) dělí uzly podle binned SAH v ose s největším rozsahem těžišť (od bodu 6).
   - Cubemapa (6× 2048², ~96 MB) se dekóduje jednou v hlavním vlákně a sdílí se přes `SharedArrayBuffer`.
     Vyžaduje to hlavičky COOP/COEP. Dev server je posílá, pro produkci viz README.
 - URL parametry: `?phong=0` zapne průhledný materiál, `?threads=N` nastaví počet workerů (výchozí min(jádra, 8)).
@@ -46,6 +47,7 @@ Podklad pro další práci (i pro Clauda). Spuštění: „přečti `PLAN.md` a 
 | 4 | průchod BVH (ořezávání, bližší potomek napřed, anyHit stínů, zásobník) | paprsky −36 % | paprsky −27 % |
 | 5a | plochá pole, Möller–Trumbore, méně alokací | 1,05 → 0,57 s celkem | 1,75 → 0,73 s celkem |
 | 5b | scéna se staví jednou a sdílí | 0,53 → 0,47 s (4 workery) | 0,67 → 0,60 s (4 workery) |
+| 6 | stavba BVH (těžiště předem, SAH) | 0,55 → 0,35 s (8 workerů) | 0,60 → 0,43 s (8 workerů) |
 
 Měřeno v 320×240 na 16vláknovém stroji. Doma budou čísla jiná, porovnávej jen relativně
 na stejném stroji (nejdřív si změř výchozí stav pro aktuální `HEAD`).
@@ -73,8 +75,23 @@ V 640×480 (po): 4 workery Phong 0,56 s / sklo 1,10 s, 8 workerů 0,54 / 0,88 s,
 Každý worker musí zahřát JIT a malý obraz má málo pruhů, proto výchozí počet min(jádra, 8).
 Bez COOP/COEP render funguje (varování v konzoli, obraz shodný), jen je pomalejší kvůli kopiím.
 
-Teď je úzkým hrdlem **příprava scény** (~0,35 s z ~0,47 s celkem u Phongu): načtení a parsování PLY
-a stavba BVH v prvním workeru. Na stavbu BVH míří bod 6.
+Bod 6 (stejný stroj, 8 workerů, obraz pixelově shodný): rozpad přípravy v Node byl PLY ~60 ms,
+geometrie ~20 ms, BVH ~200 ms. Postupně: těžiště a boxy trojúhelníků předem do pole (BVH ~85 ms, strom beze změny),
+quickselect místo quicksortu (~37 ms), nakonec binned SAH (16 košů, jen osa s největším rozsahem těžišť) místo
+dělení v půlce (~60 ms, se studeným JIT ~80 ms). SAH zrychlí render v Node o ~15–20 %, v prohlížeči:
+
+| | HEAD | medián (quickselect) | SAH |
+|---|---|---|---|
+| 160×120 Phong / sklo | | 0,33 / 0,37 s | 0,33 / 0,36 s |
+| 320×240 Phong / sklo | 0,55 / 0,60 s | 0,33–0,34 / 0,43–0,44 s | 0,35–0,38 / 0,42–0,44 s |
+| 640×480 Phong / sklo | 0,59 / 0,88 s | 0,41–0,42 / 0,74–0,78 s | 0,43–0,46 / 0,70–0,72 s |
+
+V malém rozlišení je to v šumu (±30 ms), delší stavba SAH se vrací až při víc paprscích (sklo, větší obraz,
+antialiasing z bodu 7). SAH přes všechny tři osy dává skoro stejný strom a stavba je o třetinu pomalejší.
+Když SAH nejde (všechna těžiště v jednom bodě), uzel se rozdělí v půlce.
+
+Příprava je teď ~0,2 s (z toho start workeru, načtení PLY, parsování a stavba). Další zrychlení by chtělo
+binární PLY nebo předpočítanou scénu, to už je mimo optimalizace výpočtu.
 
 ## Měření
 
@@ -102,19 +119,6 @@ node tools/bench/compare.mjs /tmp/rt-bench/pred-glass.bin /tmp/rt-bench/po-glass
   a `await render.render();`. Když se `main.ts` změní, uprav i ji.
 
 ## Zbývající body
-
-### Bod 6: stavba BVH
-
-Soubory: `src/bvh.ts`, `src/math.ts` (`sortTriangles`).
-- `sortTriangles` (quicksort s prvním prvkem jako pivotem) řadí pole indexů a při **každém porovnání**
-  počítá těžiště přes `triangleCentroid` (bez alokace od bodu 5a, ale 4× min/max). Těžiště spočítat jednou předem do pole.
-- Každý uzel se celý řadí, přitom stačí rozdělit podle mediánu (quickselect / nth_element): O(n log n) místo O(n log² n).
-- Pozor: quicksort s prvním pivotem je na už seřazeném vstupu kvadratický.
-- Volitelně SAH (surface area heuristic) místo dělení v půlce: lepší strom, rychlejší průchod.
-  Obraz by měl zůstat stejný, změní se jen strom.
-- Měř hlavně přípravu (`LOGS=1` → „Pre render time“). Od bodu 5b běží jen jednou, takže zrychlení
-  bodu 6 je vidět přímo na celkovém čase. Rozpad přípravy (načtení PLY / normály / BVH) zatím v logu není,
-  případně ho doplň (worker 0 loguje do konzole, `cdp.mjs` ale zachytí jen konzoli stránky).
 
 ### Bod 7: antialiasing
 
