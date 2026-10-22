@@ -143,7 +143,9 @@ Všechny body plánu jsou hotové.
   zastíněná místa králíka osvětluje odraz okolí (odrazivost 0,8), tmavých pixelů na něm bylo jen 23 z 76 800.
   Ambient světel 0,5× a 1× jejich difuzní barvy jen rovnoměrně zesvětlil celého králíka (o 13, resp. 26 úrovní
   na 29 % pixelů) a ubral kontrast. Sklo má ambient 0 záměrně. Stíny na zemi jsou součástí fotky v cubemapě.
-- `less/main.less`: canvas má `min-width: 1280px`, takže se malý obraz rozmaže. Zvážit `image-rendering: pixelated`.
+- ~~`less/main.less`: canvas má `min-width: 1280px`, takže se malý obraz rozmaže.~~ Hotovo: `image-rendering: pixelated`
+  (160 → 1280 px je celočíselné zvětšení 8×, pixely jsou stejně velké). Zbývá: `min-width: 1280px` na úzkém
+  displeji vede k vodorovnému posuvníku.
 - PLY parser umí jen ASCII (binární formát hlásí chybou).
 - `npm audit` hlásí `braces` uvnitř `webpack-dev-server` (jen vývojová závislost, oprava zatím jen downgradem).
 - npm blokuje `postinstall` balíku `esbuild`. Nevadí to, binárka přichází jako volitelná závislost.
