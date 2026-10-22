@@ -204,8 +204,8 @@ export default class Raytracer {
 			let lightDistance = l.norm();
 			l.normalize();
 			
-			// paprsek z bodu target do svetla, zasahy za svetlem nestini
-			let shadowRay = new Ray(origin, l, undefined, lightDistance);
+			// paprsek z bodu target do svetla, zasahy za svetlem nestini, staci prvni zasah
+			let shadowRay = new Ray(origin, l, undefined, lightDistance, true);
 			// je target ve stinu
 			this._bvh.traverse(shadowRay);
 

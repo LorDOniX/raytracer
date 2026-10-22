@@ -110,7 +110,9 @@ export function sortTriangles(items: Triangle[], from: number, n: number, axis: 
 	}
 }
 
-export function rayBoxIntersection(ray: Ray, aabb: AABB, t0: number, t1: number): boolean {
+// vzdalenost vstupu paprsku do boxu (zaporna, pokud pocatek lezi uvnitr), Infinity pokud box mine
+// nebo box zacina dal nez dosavadni nejblizsi zasah (ray.distance)
+export function rayBoxIntersection(ray: Ray, aabb: AABB): number {
 	let l1 = (aabb.minVec.x - ray.origin.x) * ray.inverted.x;
 	let l2 = (aabb.maxVec.x - ray.origin.x) * ray.inverted.x;
 	let lmin = Math.min(l1,l2);
@@ -126,14 +128,11 @@ export function rayBoxIntersection(ray: Ray, aabb: AABB, t0: number, t1: number)
 	lmin = Math.max(Math.min(l1,l2), lmin);
 	lmax = Math.min(Math.max(l1,l2), lmax);
 
-	if ((lmax >= 0 ) && (lmax >= lmin) && (t0 <= lmax) && (t1 >= lmin)) {
-		t0 = Math.max(lmin, t0);
-		t1 = Math.min(lmax, t1);
-
-		return true;
+	if ((lmax >= 0 ) && (lmax >= lmin) && (lmin <= ray.distance)) {
+		return lmin;
 	}
 	else {
-		return false;
+		return Infinity;
 	}
 }
 

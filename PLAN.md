@@ -38,9 +38,14 @@ Podklad pro další práci (i pro Clauda). Spuštění: „přečti `PLAN.md` a 
 | 2 | kreslení přes jeden `ImageData` | beze změny | beze změny |
 | 3 | cubemapa jako pole pixelů | 1,70 s + 1,1 s | 8,87 s + 1,1 s |
 | 1 | Web Workery (4) | **1,96 s celkem** | **3,85 s celkem** |
+| 4 | průchod BVH (ořezávání, bližší potomek napřed, anyHit stínů, zásobník) | paprsky −36 % | paprsky −27 % |
 
 Měřeno v 320×240 na 16vláknovém stroji. Doma budou čísla jiná, porovnávej jen relativně
 na stejném stroji (nejdřív si změř výchozí stav pro aktuální `HEAD`).
+
+Bod 4 měřen na jiném stroji (20 vláken, 4 workery): Phong 1,13 → 1,06 s celkem (paprsky 0,28 → 0,18 s),
+sklo 2,27 → 1,95 s (paprsky 1,42 → 1,04 s). Obraz pixelově shodný. Počty testů (Phong, 320×240):
+boxy 7,2 M → 5,3 M, trojúhelníky 2,9 M → 1,9 M. Vlastní zásobník místo rekurze přidal jen ~3–5 %.
 
 Po bodu 1 je úzkým hrdlem **příprava scény ve workerech** (~1,8 s): každý worker parsuje
 PLY a staví BVH sám a souběžné stavby se brzdí. Proto víc než 4 workery zpomalují
@@ -72,23 +77,6 @@ node tools/bench/compare.mjs /tmp/rt-bench/pred-glass.bin /tmp/rt-bench/po-glass
   a `await render.render();`. Když se `main.ts` změní, uprav i ji.
 
 ## Zbývající body
-
-### Bod 4: průchod BVH
-
-Soubory: `src/bvh.ts`, `src/math.ts` (`rayBoxIntersection`), `src/ray.ts`, `src/raytracer.ts` (`_lighting`).
-
-1. **Ořezávání podle nejbližšího zásahu.** `rayBoxIntersection(ray, aabb, t0, t1)` parametry `t0`/`t1` ignoruje
-   (přiřazení do nich nemá efekt) a `BVH._traverse` vždy posílá `-Infinity, Infinity`. Uzel, jehož box začíná
-   dál než dosavadní nejbližší zásah (`Ray._distance`, chybí getter), se má přeskočit.
-2. **Bližší potomek napřed.** Ať `rayBoxIntersection` vrací vstupní vzdálenost (`lmin`) nebo `Infinity` místo
-   `boolean`. Pak projdi nejdřív bližšího potomka, takže se díky bodu 1 vzdálenější víc ořezává.
-3. **Stínový paprsek končí u prvního zásahu.** Stačí vědět, že něco stíní. Např. příznak v `Ray`
-   (`anyHit`) a `traverse` po prvním zásahu skončí. Stínový paprsek už má `maxDistance` (zásahy za světlem se ignorují).
-4. Volitelně: rekurzi v `_traverse` nahradit vlastním zásobníkem (pole indexů nebo uzlů).
-
-Očekávání: obraz pixelově shodný (nejbližší zásah se nemění; pozor jen na shodné vzdálenosti u dvou
-trojúhelníků, ale `setTarget` bere jen ostře menší, takže pořadí průchodu může rozhodnout. Případný
-rozdíl je pár pixelů a je potřeba ho prověřit). Zrychlí hlavně render, ne přípravu.
 
 ### Bod 5: méně alokací, ploché pole dat, sdílená scéna
 

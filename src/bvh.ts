@@ -57,7 +57,7 @@ class BVHNode {
 
 	rayTrianglesTest(ray: Ray): void {
 		// projdeme trojuhelniky
-		for (let i = this._from; i <= this._to; i++) {
+		for (let i = this._from; i <= this._to && !ray.finished; i++) {
 			math.rayTriangleIntersection97(ray, this._triangles[i]);
 		}
 	}
@@ -70,6 +70,9 @@ export default class BVH {
 	private _nodes: number;
 	private _maxDepth: number;
 	private _root: BVHNode;
+	// zasobnik odlozenych (vzdalenejsich) uzlu pri pruchodu a vzdalenosti vstupu do jejich boxu
+	private _stack: BVHNode[];
+	private _stackDistances: Float64Array;
 
 	constructor(geometry: Geometry, opts?: Partial<BVHOptions>) {
 		this._opts = Object.assign({
@@ -84,11 +87,72 @@ export default class BVH {
 		this._root = this._buildTree(0, this._triangles.length - 1, 0, 2);
 		this._nodes++;
 
+		// na kazde urovni se odlozi nejvys jeden uzel
+		this._stack = new Array(this._maxDepth + 1);
+		this._stackDistances = new Float64Array(this._maxDepth + 1);
+
 		this._showInfo();
 	}
 
 	traverse(ray: Ray): void {
-		this._traverse(ray, this._root, -Infinity, Infinity);
+		if (math.rayBoxIntersection(ray, this._root.bounds()) === Infinity) {
+			return;
+		}
+
+		let stack = this._stack;
+		let distances = this._stackDistances;
+		let size = 0;
+		// aktualni uzel, jeho box uz prosel testem
+		let node: BVHNode | null = this._root;
+
+		while (node) {
+			if (node.isLeaf) {
+				node.rayTrianglesTest(ray);
+
+				if (ray.finished) {
+					return;
+				}
+			}
+			else {
+				let near: BVHNode = node.leftChild!;
+				let far: BVHNode = node.rightChild!;
+				let nearDistance = math.rayBoxIntersection(ray, near.bounds());
+				let farDistance = math.rayBoxIntersection(ray, far.bounds());
+
+				// blizsi potomek napred, vzdalenejsi se pak muze oriznout podle nalezeneho zasahu
+				if (farDistance < nearDistance) {
+					let tmp = near;
+					near = far;
+					far = tmp;
+
+					let tmpDistance = nearDistance;
+					nearDistance = farDistance;
+					farDistance = tmpDistance;
+				}
+
+				if (nearDistance !== Infinity) {
+					if (farDistance !== Infinity) {
+						stack[size] = far;
+						distances[size++] = farDistance;
+					}
+
+					node = near;
+					continue;
+				}
+			}
+
+			// dalsi odlozeny uzel, ktery nezacina az za nejblizsim zasahem
+			node = null;
+
+			while (size > 0) {
+				size--;
+
+				if (distances[size] <= ray.distance) {
+					node = stack[size];
+					break;
+				}
+			}
+		}
 	}
 
 	private _buildTree(from: number, to: number, depth: number, axis: Axis): BVHNode {
@@ -118,19 +182,6 @@ export default class BVH {
 
 		// vraci koren
 		return node;
-	}
-
-	private _traverse(ray: Ray, node: BVHNode | null, t0: number, t1: number): void {
-		if (node && math.rayBoxIntersection(ray, node.bounds(), t0, t1)) {
-			if (node.isLeaf) {
-				node.rayTrianglesTest(ray);
-			}
-			else {
-				// projdeme oba potomky
-				this._traverse(ray, node.leftChild, t0, t1);
-				this._traverse(ray, node.rightChild, t0, t1);
-			}
-		}
 	}
 
 	private _showInfo(): void {

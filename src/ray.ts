@@ -9,9 +9,11 @@ export default class Ray {
 	private _distance: number;
 	private _changed: boolean;
 	private _triangle: Triangle | null;
+	private _anyHit: boolean;
 
 	// maxDistance - zasahy dal nez tato vzdalenost se ignoruji (napr. stinovy paprsek za svetlem)
-	constructor(origin?: Vector3, direction?: Vector3, bgDirection?: Vector3, maxDistance = Infinity) {
+	// anyHit - staci libovolny zasah, ne nejblizsi (stinovy paprsek), pruchod BVH skonci u prvniho
+	constructor(origin?: Vector3, direction?: Vector3, bgDirection?: Vector3, maxDistance = Infinity, anyHit = false) {
 		this._origin = origin || new Vector3();
 		this._direction = direction || new Vector3();
 		this._bgDirection = bgDirection || new Vector3(); // vektor pozadi
@@ -19,6 +21,7 @@ export default class Ray {
 		this._distance = maxDistance;
 		this._changed = false;
 		this._triangle = null;
+		this._anyHit = anyHit;
 	}
 
 	get origin(): Vector3 {
@@ -35,6 +38,16 @@ export default class Ray {
 
 	get inverted(): Vector3 {
 		return this._inverted;
+	}
+
+	// vzdalenost nejblizsiho zasahu (pred zasahem maxDistance)
+	get distance(): number {
+		return this._distance;
+	}
+
+	// paprsek uz nema smysl dal sledovat (anyHit a neco zasahl)
+	get finished(): boolean {
+		return this._anyHit && this._changed;
 	}
 
 	get changed(): boolean {
