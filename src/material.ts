@@ -1,6 +1,14 @@
 import Vector3 from "./vector3";
 
 export default class Material {
+	private _ambiente: Vector3;
+	private _diffuse: Vector3;
+	private _specular: Vector3;
+	private _emission: Vector3;
+	private _shininess: number;
+	private _reflectivity: number;
+	private _ior: number;
+
 	constructor() {
 		// - okolo ni
 		this._ambiente = new Vector3(0.1, 0.1, 0.1);
@@ -13,31 +21,31 @@ export default class Material {
 		this._ior = 1.5;
 	}
 
-	get ambiente() {
+	get ambiente(): Vector3 {
 		return this._ambiente;
 	}
 
-	get diffuse() {
+	get diffuse(): Vector3 {
 		return this._diffuse;
 	}
 
-	get specular() {
+	get specular(): Vector3 {
 		return this._specular;
 	}
 
-	get emission() {
+	get emission(): Vector3 {
 		return this._emission;
 	}
 
-	get shininess() {
+	get shininess(): number {
 		return this._shininess;
 	}
 
-	get reflectivity() {
+	get reflectivity(): number {
 		return this._reflectivity;
 	}
 
-	get ior() {
+	get ior(): number {
 		return this._ior;
 	}
 }

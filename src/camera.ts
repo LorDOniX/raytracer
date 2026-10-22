@@ -2,7 +2,18 @@ import Vector3 from "./vector3";
 import Ray from "./ray";
 import * as math from "./math";
 
+type MatrixRow = [number, number, number];
+export type Matrix3 = [MatrixRow, MatrixRow, MatrixRow];
+
 export default class Camera {
+	private _width: number;
+	private _height: number;
+	private _aspect: number;
+	private _fovY: number;
+	private _fovX: number;
+	private _eye: Vector3;
+	private _tm: Matrix3;
+
 	constructor(width = 640, height = 480, fovY = 45) {
 		// sirka vyska obrazku
 		this._width = width;
@@ -20,23 +31,23 @@ export default class Camera {
 		this._showInfo();
 	}
 
-	get width() {
+	get width(): number {
 		return this._width;
 	}
 
-	get height() {
+	get height(): number {
 		return this._height;
 	}
 
-	setEye(eye) {
+	setEye(eye: Vector3): void {
 		this._eye = eye;
 	}
 
-	setTransformationMatrix(tm) {
+	setTransformationMatrix(tm: Matrix3): void {
 		this._tm = tm;
 	}
 
-	generateRay(sx, sy) {
+	generateRay(sx: number, sy: number): Ray {
 		let x = ((2 * sx - this._width) / this._width) * Math.tan(math.deg2Rad(this._fovX * 0.5));
 		let y = ((2 * sy - this._height) / this._height) * Math.tan(math.deg2Rad(this._fovY * 0.5));
 		// smer noveho paprsku
@@ -62,7 +73,7 @@ export default class Camera {
 		return (new Ray(this._eye, directionTransformed, bgDirection));
 	}
 
-	_showInfo() {
+	private _showInfo(): void {
 		console.log(`Camera`);
 		console.log(`Width      : ${ this._width }px`);
 		console.log(`Height     : ${ this._height }px`);

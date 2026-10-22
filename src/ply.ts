@@ -1,44 +1,73 @@
-import * as $http from "./onix/http";
-
 const TYPES = {
 	END_HEADER: "end_header",
 	ELEMENT: /element (\w+) (\d+)/,
 	PROPERTY: /property (\w+) (.*)$/
 };
 
+export interface PlyProperty {
+	name: string;
+	type: string;
+}
+
+export interface PlyItem {
+	// float vlastnosti z hlavicky (x, y, z...)
+	values: Record<string, number>;
+	// list vlastnost - indexy vrcholu facu
+	ids: number[];
+}
+
+export interface PlyElement {
+	name: string;
+	size: number;
+	properties: PlyProperty[];
+	items: PlyItem[];
+}
+
+export type PlyElements = Record<string, PlyElement>;
+
+export interface PlyOptions {
+	switchYZ: boolean;
+}
+
 export default class Ply {
-	constructor(opts) {
+	private _opts: PlyOptions;
+	private _lines: string[];
+	private _elements: PlyElements;
+
+	constructor(opts?: Partial<PlyOptions>) {
 		this._opts = Object.assign({
 			switchYZ: true
 		}, opts);
-		this._lines = null;
-		this._elements = null;
+		this._lines = [];
+		this._elements = {};
 	}
 
-	load(url) {
-		return new Promise((resolve, reject) => {
-			$http.createRequest({
-				url
-			}).then(data => {
-				this._lines = data.data.split("\n");
+	load(url: string): Promise<PlyElements> {
+		return fetch(url).then(response => {
+			if (!response.ok) {
+				throw new Error(`Loading ${url} failed with status ${response.status}`);
+			}
 
-				this._parse();
-				resolve(this._elements);
-			}, e => {
-				console.error(e);
-				reject(e);
-			});
+			return response.text();
+		}).then(data => {
+			this._lines = data.split("\n");
+
+			this._parse();
+			return this._elements;
+		}, e => {
+			console.error(e);
+			throw e;
 		});
 	}
 
-	get elements() {
+	get elements(): PlyElements {
 		return this._elements;
 	}
 
-	_parse() {
+	private _parse(): void {
 		// hlavicka
-		let elements = [];
-		let elementsObj = {};
+		let elements: PlyElement[] = [];
+		let elementsObj: PlyElements = {};
 		let ind = -1;
 		let len = this._lines.length;
 
@@ -51,8 +80,8 @@ export default class Ply {
 				break;
 			}
 			else if (line.match(TYPES.ELEMENT)) {
-				let data = line.match(TYPES.ELEMENT);
-				let elementObj = {
+				let data = line.match(TYPES.ELEMENT)!;
+				let elementObj: PlyElement = {
 					name: data[1],
 					size: parseFloat(data[2]),
 					properties: [],
@@ -66,7 +95,7 @@ export default class Ply {
 				let lastElement = elements.length ? elements[elements.length - 1] : null;
 
 				if (lastElement) {
-					let data = line.match(TYPES.PROPERTY);
+					let data = line.match(TYPES.PROPERTY)!;
 					lastElement.properties.push({
 						name: data[2],
 						type: data[1]
@@ -120,9 +149,12 @@ export default class Ply {
 		this._elements = elementsObj;
 	}
 
-	_parseLine(element, line) {
+	private _parseLine(element: PlyElement, line: string): void {
 		let parts = line.split(/\s/).filter(i => i.length);
-		let newItem = {};
+		let newItem: PlyItem = {
+			values: {},
+			ids: []
+		};
 
 		element.properties.forEach((property, ind) => {
 			switch (property.type) {
@@ -130,21 +162,14 @@ export default class Ply {
 					let partValue = parts[ind];
 
 					if (partValue) {
-						newItem[property.name] = parseFloat(partValue);
+						newItem.values[property.name] = parseFloat(partValue);
 					}
 					break;
 
 				case "list":
-					parts.forEach((part, partInd) => {
-						switch (partInd) {
-							case 0:
-								newItem.size = parseInt(part);
-								newItem.ids = [];
-								break;
-
-							default:
-								newItem.ids.push(parseInt(part));
-						}
+					// prvni cislo je pocet indexu, zbytek jsou indexy
+					parts.slice(1).forEach(part => {
+						newItem.ids.push(parseInt(part));
 					});
 					break;
 			}

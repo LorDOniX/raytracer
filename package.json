@@ -1,34 +1,33 @@
 {
-  "name": "Raytracer",
+  "name": "raytracer",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "description": "Raytracer in TypeScript",
   "scripts": {
-    "watch": "node bundler.js watch",
-    "dev": "node bundler.js dev",
-    "dist": "node bundler.js dist"
+    "start": "webpack serve --mode development",
+    "build": "npm run typecheck && webpack --mode production",
+    "build:dev": "webpack --mode development",
+    "watch": "webpack --mode development --watch",
+    "typecheck": "tsc --noEmit",
+    "typecheck:watch": "tsc --noEmit --watch"
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "babel-core": "^6.26.0",
-    "babel-plugin-external-helpers": "^6.22.0",
-    "babel-plugin-transform-object-rest-spread": "^6.26.0",
-    "babel-preset-es2015": "^6.24.1",
-    "boxen": "^1.2.2",
-    "chokidar": "^1.7.0",
-    "colors": "^1.1.2",
-    "express": "^4.16.2",
-    "fast-async": "^6.3.0",
-    "filesize": "^3.5.11",
-    "gzip-size": "^4.1.0",
-    "less": "^2.7.2",
-    "less-plugin-autoprefix": "^1.5.1",
-    "less-plugin-clean-css": "^1.5.1",
-    "rollup": "^0.45.1",
-    "rollup-plugin-includepaths": "^0.2.2",
-    "rollup-plugin-multi-entry": "^2.0.1",
-    "rollup-watch": "^4.0.0",
-    "uglify-es": "^3.2.1"
+  "engines": {
+    "node": ">=22.15.0"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^14.0.0",
+    "css-loader": "^7.1.5",
+    "css-minimizer-webpack-plugin": "^8.0.0",
+    "esbuild-loader": "^4.5.0",
+    "html-webpack-plugin": "^5.6.8",
+    "less": "^4.9.1",
+    "less-loader": "^13.0.0",
+    "mini-css-extract-plugin": "^2.10.2",
+    "typescript": "^7.0.2",
+    "webpack": "^5.112.0",
+    "webpack-cli": "^7.2.3",
+    "webpack-dev-server": "^6.1.0"
   }
 }

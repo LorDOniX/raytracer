@@ -1,10 +1,13 @@
-import Vector3 from "./vector3";
+import type { Axis } from "./vector3";
+import type AABB from "./aabb";
+import type Ray from "./ray";
+import type Triangle from "./triangle";
 
 // anything that avoids division overflow
 const SMALL_NUM = 0.00000001;
 const SORT_MAX_LVLS = 300;
 
-export function rayTriangleIntersection97(ray, triangle) {
+export function rayTriangleIntersection97(ray: Ray, triangle: Triangle): void {
 	// get triangle edge vectors and plane normal
 	let u = triangle.vertices[1].minus(triangle.vertices[0]);
 	let v = triangle.vertices[2].minus(triangle.vertices[0]);
@@ -49,13 +52,13 @@ export function rayTriangleIntersection97(ray, triangle) {
 	ray.setTarget(r, triangle);
 }
 
-export function deg2Rad(deg) {
+export function deg2Rad(deg: number): number {
 	return (deg / 180 * Math.PI);
 }
 
-export function sortTriangles(items, from, n, axis) {
-	let beg = new Array(SORT_MAX_LVLS);
-	let end = new Array(SORT_MAX_LVLS);
+export function sortTriangles(items: Triangle[], from: number, n: number, axis: Axis): void {
+	let beg: number[] = new Array(SORT_MAX_LVLS);
+	let end: number[] = new Array(SORT_MAX_LVLS);
 	beg[0] = 0;
 	end[0] = n;
 	
@@ -106,7 +109,7 @@ export function sortTriangles(items, from, n, axis) {
 	}
 }
 
-export function rayBoxIntersection(ray, aabb, t0, t1) {
+export function rayBoxIntersection(ray: Ray, aabb: AABB, t0: number, t1: number): boolean {
 	let l1 = (aabb.minVec.x - ray.origin.x) * ray.inverted.x;
 	let l2 = (aabb.maxVec.x - ray.origin.x) * ray.inverted.x;
 	let lmin = Math.min(l1,l2);

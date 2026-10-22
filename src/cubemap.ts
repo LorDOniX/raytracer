@@ -1,7 +1,19 @@
 import Color from "./color";
 import Vector3 from "./vector3";
 
+interface CubemapImage {
+	src: string;
+	img?: HTMLImageElement;
+	width?: number;
+	height?: number;
+	ctx?: CanvasRenderingContext2D;
+}
+
+type CubemapFace = "posX" | "negX" | "posY" | "negY" | "posZ" | "negZ";
+
 export default class Cubemap {
+	private _images: Record<CubemapFace, CubemapImage>;
+
 	constructor() {
 		this._images = {
 			posX: {
@@ -25,18 +37,18 @@ export default class Cubemap {
 		};
 	}
 
-	load() {
-		let all = [];
+	load(): Promise<void[]> {
+		let all: Promise<void>[] = [];
 
-		Object.keys(this._images).forEach(key => {
-			all.push(this._loadImage(this._images[key]));
+		Object.values(this._images).forEach(imgItem => {
+			all.push(this._loadImage(imgItem));
 		});
 
 		return Promise.all(all);
 	}
 
-	getColor(direction) {
-		let imgItem = null;
+	getColor(direction: Vector3): Color {
+		let imgItem: CubemapImage;
 		let ma = direction.masterAxis();
 		let x = 0;
 		let y = 0;
@@ -69,7 +81,7 @@ export default class Cubemap {
 				}
 				break;
 
-			case 2:
+			default:
 				if (direction.z >= 0) {
 					x = (direction.x / Math.abs(direction.z) + 1) * 0.5;
 					y = 1 - (direction.y / Math.abs(direction.z) + 1) * 0.5;
@@ -86,15 +98,21 @@ export default class Cubemap {
 		return this._bilinearInterpolation(x, y, imgItem);
 	}
 
-	_loadImage(imgItem) {
+	private _loadImage(imgItem: CubemapImage): Promise<void> {
 		return new Promise(resolve => {
 			let image = new Image();
 			image.src = imgItem.src;
-			image.addEventListener("load", e => {
+			image.addEventListener("load", () => {
 				let canvas = document.createElement("canvas");
 				canvas.width = image.width;
 				canvas.height = image.height;
 				let ctx = canvas.getContext("2d");
+
+				if (!ctx) {
+					resolve();
+					return;
+				}
+
 				ctx.drawImage(image, 0, 0);
 
 				// pridame atributy
@@ -104,14 +122,19 @@ export default class Cubemap {
 
 				resolve();
 			});
-			image.addEventListener("error", e => {
+			image.addEventListener("error", () => {
 				resolve();
 			});
 			imgItem.img = image;
 		});
 	}
 
-	_getPixel(imgItem, x, y) {
+	private _getPixel(imgItem: CubemapImage, x: number, y: number): Vector3 {
+		// obrazek se nepodarilo nacist
+		if (!imgItem.ctx) {
+			return new Vector3();
+		}
+
 		let imgData = imgItem.ctx.getImageData(x, y, 1, 1);
 		let data = imgData.data;
 
@@ -121,9 +144,9 @@ export default class Cubemap {
 
 	// http://www.devmaster.net/articles/raytracing_series/part6.php
 	// S = (1-p)(1-q) a + (1-p) q c + p (1-q) b + p q d
-	_bilinearInterpolation(x, y, imgItem) {
-		let width = imgItem.width;
-		let height = imgItem.height;
+	private _bilinearInterpolation(x: number, y: number, imgItem: CubemapImage): Color {
+		let width = imgItem.width || 0;
+		let height = imgItem.height || 0;
 
 		x = width * x;
 		y = height * y;

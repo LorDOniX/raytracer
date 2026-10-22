@@ -5,13 +5,35 @@ import Material from "./material";
 import Light from "./light";
 import Vector3 from "./vector3";
 import Ray from "./ray";
+import type Camera from "./camera";
+import type BVH from "./bvh";
 
 // vzduch a material
 const IOR_AIR = 1.000293;
 const IOR_MATERIAL = 1.5;
 
+export interface RenderOptions {
+	threadsCount: number;
+	phong: boolean;
+	background: boolean;
+	maxDepth: number;
+	minCoefficient: number;
+	startTime: number;
+}
+
 export default class Render {
-	constructor(camera, bvh, opts) {
+	private _opts: RenderOptions;
+	private _camera: Camera;
+	private _bvh: BVH;
+	private _graphics: Graphics;
+	private _cubemap: Cubemap;
+	private _startTime: number;
+	private _doneThreads: number;
+	private _threads: number;
+	private _materials: Material[];
+	private _lights: Light[];
+
+	constructor(camera: Camera, bvh: BVH, opts?: Partial<RenderOptions>) {
 		this._opts = Object.assign({
 			threadsCount: 4, // nasobky 2
 			phong: true,
@@ -22,7 +44,13 @@ export default class Render {
 		}, opts);
 		this._camera = camera;
 		this._bvh = bvh;
-		this._graphics = new Graphics(document.getElementById("canvas"), camera);
+		let canvas = document.getElementById("canvas");
+
+		if (!(canvas instanceof HTMLCanvasElement)) {
+			throw new Error("Missing canvas element #canvas");
+		}
+
+		this._graphics = new Graphics(canvas, camera);
 		this._cubemap = new Cubemap();
 		this._startTime = 0;
 		this._doneThreads = 0;
@@ -37,7 +65,7 @@ export default class Render {
 		this._lights[1].diffuse.setXYZ(0.3, 0.3, 0.7);
 	}
 
-	async render() {
+	async render(): Promise<void> {
 		if (this._opts.background) {
 			await this._cubemap.load();
 		}
@@ -60,7 +88,7 @@ export default class Render {
 		}
 	}
 
-	_renderPart(fromX, toX, fromY, toY) {
+	private _renderPart(fromX: number, toX: number, fromY: number, toY: number): void {
 		this._threads++;
 
 		setTimeout(() => {
@@ -86,7 +114,7 @@ export default class Render {
 		}, 0);
 	}
 
-	_raytrace(rayArg) {
+	private _raytrace(rayArg: Ray): Color {
 		let ray = rayArg;
 		let color = new Vector3();
 		let depth = 0;
@@ -99,18 +127,18 @@ export default class Render {
 		do {
 			this._bvh.traverse(ray);
 
-			if (ray.changed) {
+			// souradnice zasahu
+			let target = ray.getTarget();
+
+			if (target && ray.triangle) {
 				// zasah ++
 				hits++;
 
 				// neco jsme trefili, ziskame material zasazeneho objektu
 				let material = this._materials[0];
-				// souradnice zasahu
-				let target = ray.getTarget();
 				// interpolovana normala plochy v bode target
 				let targetNormal = ray.triangle.normal(target);
 				let r = ray.direction.minus(targetNormal.mul(2 * targetNormal.dotProduct(ray.direction)));
-				let newRay;
 				
 				if (!this._opts.phong) {
 					// materialy
@@ -118,7 +146,7 @@ export default class Render {
 					let n2 = (n1 == IOR_AIR) ? IOR_MATERIAL : IOR_AIR;
 
 					// snell's law
-					let cosTheta1 = Math.abs(targetNormal.dotProduct(-ray.direction));
+					let cosTheta1 = Math.abs(targetNormal.dotProduct(ray.direction.mul(-1)));
 					let cosTheta2 = Math.sqrt(1 - Math.pow(n1 / n2, 2) * (1 - Math.pow(cosTheta1, 2)));
 					// goniometricka 1 dopocteni
 					let sinTheta1 = Math.sqrt(1 - Math.pow(cosTheta1, 2));
@@ -163,10 +191,10 @@ export default class Render {
 				else {
 					// pouze odrazivoast materialu
 					coefficient *= material.reflectivity;
-				
-					// odražený nebo propuštěný paprsek
-					newRay = new Ray(target.plus(r.mul(0.001)), r);
 				}
+
+				// odražený nebo propuštěný paprsek
+				let newRay = new Ray(target.plus(r.mul(0.001)), r);
 
 				// vypocet prispevku osvetleni bodu target ze vsech svetel
 				for (let li = 0; li < this._lights.length; ++li) {

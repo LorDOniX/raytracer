@@ -1,4 +1,4 @@
-import * as $dom from "./onix/dom";
+import "../less/main.less";
 import Ply from "./ply";
 import Geometry from "./geometry";
 import Camera from "./camera";
@@ -14,6 +14,9 @@ const SIZE = {
 };
 
 class Main {
+	private _startTime: number;
+	private _ply: Ply;
+
 	constructor() {
 		this._startTime = Date.now();
 		this._ply = new Ply();
@@ -21,7 +24,7 @@ class Main {
 		this._run();
 	}
 
-	async _run() {
+	private async _run(): Promise<void> {
 		let camera = new Camera(320 * 0.5, 240 * 0.5);
 		camera.setEye(new Vector3(-0.067, 0.237, 0.184));
 		camera.setTransformationMatrix([
@@ -39,6 +42,11 @@ class Main {
 	}
 };
 
-$dom.load(() => {
+if (document.readyState == "loading") {
+	document.addEventListener("DOMContentLoaded", () => {
+		new Main();
+	});
+}
+else {
 	new Main();
-});
+}

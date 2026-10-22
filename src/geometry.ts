@@ -1,8 +1,32 @@
 import Vector3 from "./vector3";
 import Triangle from "./triangle";
+import type Ply from "./ply";
+
+export interface GeometryOptions {
+	flipNormals: boolean;
+	scale: number;
+}
+
+interface GeometryItem {
+	position: Vector3;
+	normal: Vector3;
+	textureCoord: Vector3;
+}
+
+interface TriangleItem {
+	ids: number[];
+	triangle: Triangle;
+}
 
 export default class Geometry {
-	constructor(ply, opts) {
+	private _ply: Ply;
+	private _opts: GeometryOptions;
+	private _items: GeometryItem[];
+	private _triangles: Triangle[];
+	private _triangleItems: TriangleItem[];
+	private _facesIds: Record<number, TriangleItem[]>;
+
+	constructor(ply: Ply, opts?: Partial<GeometryOptions>) {
 		this._ply = ply;
 		this._opts = Object.assign({
 			flipNormals: false,
@@ -16,17 +40,18 @@ export default class Geometry {
 		this._create();
 	}
 
-	get triangles() {
+	get triangles(): Triangle[] {
 		return this._triangles;
 	}
 
-	_create() {
+	private _create(): void {
 		let elements = this._ply.elements;
 
 		if ("vertex" in elements) {
 			elements.vertex.items.forEach(vertex => {
-				let position = new Vector3(vertex.x, vertex.y, vertex.z);
-				let normal = new Vector3(vertex.x, vertex.y, vertex.z);
+				let { x, y, z } = vertex.values;
+				let position = new Vector3(x, y, z);
+				let normal = new Vector3(x, y, z);
 				let textureCoord = new Vector3();
 
 				position.mulApply(this._opts.scale);
@@ -46,23 +71,8 @@ export default class Geometry {
 
 		if ("face" in elements) {
 			elements.face.items.forEach(face => {
-				let triangleItem = {
-					ids: face.ids,
-					triangle: null
-				};
-				let items = [];
-
-				face.ids.forEach(id => {
-					items.push(this._items[id]);
-
-					if (!(id in this._facesIds)) {
-						this._facesIds[id] = [];
-					}
-
-					this._facesIds[id].push(triangleItem);
-				});
-
-				triangleItem.triangle = new Triangle(
+				let items = face.ids.map(id => this._items[id]);
+				let triangle = new Triangle(
 					items[0].position,
 					items[1].position,
 					items[2].position,
@@ -71,16 +81,28 @@ export default class Geometry {
 					items[2].normal,
 					this._opts.flipNormals
 				);
+				let triangleItem: TriangleItem = {
+					ids: face.ids,
+					triangle
+				};
+
+				face.ids.forEach(id => {
+					if (!(id in this._facesIds)) {
+						this._facesIds[id] = [];
+					}
+
+					this._facesIds[id].push(triangleItem);
+				});
 
 				this._triangleItems.push(triangleItem);
-				this._triangles.push(triangleItem.triangle);
+				this._triangles.push(triangle);
 			});
 		}
 
 		this._updatePerVertexNormals(!this._opts.flipNormals);
 	}
 
-	_updatePerVertexNormals(flipNormals) {
+	private _updatePerVertexNormals(flipNormals: boolean): void {
 		console.log("Geometry");
 		console.log(`Triangles : ${ this._triangles.length }`);
 		console.log(`Calculating normals [${flipNormals ? "flip" : "noflip"}]...`);

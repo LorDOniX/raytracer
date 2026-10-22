@@ -1,8 +1,16 @@
 import Vector3 from "./vector3";
 import AABB from "./aabb";
 
+type TriangleVectors = [Vector3, Vector3, Vector3];
+
 export default class Triangle {
-	constructor(p0, p1, p2, pvn0, pvn1, pvn2, flipNormal) {
+	private _vertices: TriangleVectors;
+	private _perVertexNormals: TriangleVectors;
+	private _perFaceNormal: Vector3;
+	private _bounds: AABB;
+	private _area: number;
+
+	constructor(p0?: Vector3, p1?: Vector3, p2?: Vector3, pvn0?: Vector3, pvn1?: Vector3, pvn2?: Vector3, flipNormal?: boolean) {
 		this._vertices = [
 			p0 || new Vector3(),
 			p1 || new Vector3(),
@@ -20,31 +28,31 @@ export default class Triangle {
 		this._updatePerFaceNormal(flipNormal);
 	}
 
-	get perFaceNormal() {
+	get perFaceNormal(): Vector3 {
 		return this._perFaceNormal;
 	}
 
-	get vertices() {
+	get vertices(): TriangleVectors {
 		return this._vertices;
 	}
 
-	get perVertexNormals() {
+	get perVertexNormals(): TriangleVectors {
 		return this._perVertexNormals;
 	}
 
-	setPerVertexNormal(ind, normal) {
+	setPerVertexNormal(ind: number, normal: Vector3): void {
 		this._perVertexNormals[ind] = normal;
 	}
 
-	bounds() {
+	bounds(): AABB {
 		return this._bounds;
 	}
 
-	area() {
+	area(): number {
 		return this._area;
 	}
 
-	normal(p) {
+	normal(p: Vector3): Vector3 {
 		let v0 = this._vertices[2].minus(this._vertices[0]);
 		let v1 = this._vertices[1].minus(this._vertices[0]);
 		let v2 = p.minus(this._vertices[0]);
@@ -67,7 +75,7 @@ export default class Triangle {
 		return n;
 	}
 
-	_getBounds() {
+	private _getBounds(): AABB {
 		// min vektor
 		let minVec = new Vector3(
 			Math.min(Math.min(this._vertices[0].x, this._vertices[1].x), this._vertices[2].x),
@@ -85,7 +93,7 @@ export default class Triangle {
 		return new AABB(minVec, maxVec);
 	}
 
-	_getArea() {
+	private _getArea(): number {
 		let a = this._vertices[0].minus(this._vertices[1]).norm();
 		let b = this._vertices[1].minus(this._vertices[2]).norm();
 		let c = this._vertices[2].minus(this._vertices[0]).norm();
@@ -94,7 +102,7 @@ export default class Triangle {
 		return Math.sqrt(s * (s - a) * (s - b) * (s - c));
 	}
 
-	_updatePerFaceNormal(flipNormal) {
+	private _updatePerFaceNormal(flipNormal?: boolean): void {
 		this._perFaceNormal = this._vertices[1].minus(this._vertices[0]).crossProduct(this._vertices[2].minus(this._vertices[0]));
 
 		if (flipNormal) {

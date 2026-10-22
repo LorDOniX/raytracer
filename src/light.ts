@@ -1,7 +1,12 @@
 import Vector3 from "./vector3";
 
 export default class Light {
-	constructor(position) {
+	private _position: Vector3;
+	private _ambiente: Vector3;
+	private _diffuse: Vector3;
+	private _specular: Vector3;
+
+	constructor(position?: Vector3) {
 		this._position = position || new Vector3();
 		// - okolo ni
 		this._ambiente = new Vector3();
@@ -9,19 +14,19 @@ export default class Light {
 		this._specular = new Vector3(1, 1, 1);
 	}
 
-	get position() {
+	get position(): Vector3 {
 		return this._position;
 	}
 
-	get ambiente() {
+	get ambiente(): Vector3 {
 		return this._ambiente;
 	}
 
-	get diffuse() {
+	get diffuse(): Vector3 {
 		return this._diffuse;
 	}
 
-	get specular() {
+	get specular(): Vector3 {
 		return this._specular;
 	}
 }

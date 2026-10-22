@@ -1,8 +1,23 @@
 import * as math from "./math";
 import AABB from "./aabb";
+import type { Axis } from "./vector3";
+import type Ray from "./ray";
+import type Triangle from "./triangle";
+import type Geometry from "./geometry";
+
+export interface BVHOptions {
+	maxLeafItems: number;
+}
 
 class BVHNode {
-	constructor(from, to, triangles) {
+	private _from: number;
+	private _to: number;
+	private _triangles: Triangle[];
+	private _leftChild: BVHNode | null;
+	private _rightChild: BVHNode | null;
+	private _bounding: AABB;
+
+	constructor(from: number, to: number, triangles: Triangle[]) {
 		this._from = from;
 		this._to = to;
 		this._triangles = triangles;
@@ -16,31 +31,31 @@ class BVHNode {
 		}
 	}
 
-	set leftChild(child) {
+	set leftChild(child: BVHNode | null) {
 		this._leftChild = child;
 	}
 
-	set rightChild(child) {
+	set rightChild(child: BVHNode | null) {
 		this._rightChild = child;
 	}
 
-	get leftChild() {
+	get leftChild(): BVHNode | null {
 		return this._leftChild;
 	}
 
-	get rightChild() {
+	get rightChild(): BVHNode | null {
 		return this._rightChild;
 	}
 
-	get isLeaf() {
+	get isLeaf(): boolean {
 		return (this._leftChild === null && this._rightChild === null);
 	}
 
-	bounds() {
+	bounds(): AABB {
 		return this._bounding;
 	}
 
-	rayTrianglesTest(ray) {
+	rayTrianglesTest(ray: Ray): void {
 		// projdeme trojuhelniky
 		for (let i = this._from; i <= this._to; i++) {
 			math.rayTriangleIntersection97(ray, this._triangles[i]);
@@ -49,7 +64,14 @@ class BVHNode {
 }
 
 export default class BVH {
-	constructor(geometry, opts) {
+	private _opts: BVHOptions;
+	private _triangles: Triangle[];
+	private _leafs: number;
+	private _nodes: number;
+	private _maxDepth: number;
+	private _root: BVHNode;
+
+	constructor(geometry: Geometry, opts?: Partial<BVHOptions>) {
 		this._opts = Object.assign({
 			maxLeafItems: 8
 		}, opts);
@@ -65,11 +87,11 @@ export default class BVH {
 		this._showInfo();
 	}
 
-	traverse(ray) {
+	traverse(ray: Ray): void {
 		this._traverse(ray, this._root, -Infinity, Infinity);
 	}
 
-	_buildTree(from, to, depth, axis) {
+	private _buildTree(from: number, to: number, depth: number, axis: Axis): BVHNode {
 		let n = to - from + 1;
 		let node = new BVHNode(from, to, this._triangles);
 
@@ -88,7 +110,7 @@ export default class BVH {
 		math.sortTriangles(this._triangles, from, n, axis);
 
 		// rozdeleni na dva pod-intervaly
-		axis = (axis + 1) % 3;
+		axis = ((axis + 1) % 3) as Axis;
 
 		// leafy
 		node.leftChild = this._buildTree(from, pivot - 1, depth + 1, axis);
@@ -98,8 +120,8 @@ export default class BVH {
 		return node;
 	}
 
-	_traverse(ray, node, t0, t1) {
-		if (math.rayBoxIntersection(ray, node.bounds(), t0, t1)) {
+	private _traverse(ray: Ray, node: BVHNode | null, t0: number, t1: number): void {
+		if (node && math.rayBoxIntersection(ray, node.bounds(), t0, t1)) {
 			if (node.isLeaf) {
 				node.rayTrianglesTest(ray);
 			}
@@ -111,7 +133,7 @@ export default class BVH {
 		}
 	}
 
-	_showInfo() {
+	private _showInfo(): void {
 		console.log(`BVH`);
 		console.log(`Leafs      : ${ this._leafs }`);
 		console.log(`Nodes      : ${ this._nodes }`);

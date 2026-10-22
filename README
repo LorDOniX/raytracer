@@ -4,7 +4,10 @@ Raytracer
 Start:
 
 npm install
-./dev-server.js 
+npm start          # dev server na http://localhost:8004 (port lze zmenit pres PORT)
+npm run build      # produkcni build do dist/
+npm run watch      # vyvojovy build do dist/ se sledovanim zmen
+npm run typecheck  # kontrola typu (TypeScript), build ji spousti automaticky
 
 Workflow:
 
