@@ -58,6 +58,11 @@ module.exports = (env, argv) => {
 		devServer: {
 			port: process.env.PORT || 8004,
 			historyApiFallback: true,
+			// cross-origin isolation - SharedArrayBuffer pro cubemapu sdilenou mezi workery
+			headers: {
+				"Cross-Origin-Opener-Policy": "same-origin",
+				"Cross-Origin-Embedder-Policy": "require-corp"
+			},
 			open: false
 		}
 	};

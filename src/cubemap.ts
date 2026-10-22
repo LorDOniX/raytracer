@@ -1,72 +1,49 @@
 import Color from "./color";
 import Vector3 from "./vector3";
 
-interface CubemapImage {
-	src: string;
+export interface CubemapImage {
 	width: number;
 	height: number;
-	// RGBA pixely obrazku, null dokud neni nacten (nebo se nacist nepodarilo)
-	pixels: Uint8ClampedArray | null;
+	// RGBA pixely obrazku, pri cross-origin isolation ve SharedArrayBuffer sdilenem mezi workery
+	pixels: Uint8ClampedArray;
 }
 
-type CubemapFace = "posX" | "negX" | "posY" | "negY" | "posZ" | "negZ";
+export type CubemapFace = "posX" | "negX" | "posY" | "negY" | "posZ" | "negZ";
+
+// obrazky sten, null pokud se nepodarilo nacist
+export type CubemapData = Record<CubemapFace, CubemapImage | null>;
+
+const SOURCES: Record<CubemapFace, string> = {
+	posX: "/img/posx.jpg",
+	negX: "/img/negx.jpg",
+	posY: "/img/posy.jpg",
+	negY: "/img/negy.jpg",
+	posZ: "/img/posz.jpg",
+	negZ: "/img/negz.jpg"
+};
 
 export default class Cubemap {
-	private _images: Record<CubemapFace, CubemapImage>;
+	private _images: CubemapData;
 
-	constructor() {
-		this._images = {
-			posX: {
-				src: "/img/posx.jpg",
-				width: 0,
-				height: 0,
-				pixels: null
-			},
-			negX: {
-				src: "/img/negx.jpg",
-				width: 0,
-				height: 0,
-				pixels: null
-			},
-			posY: {
-				src: "/img/posy.jpg",
-				width: 0,
-				height: 0,
-				pixels: null
-			},
-			negY: {
-				src: "/img/negy.jpg",
-				width: 0,
-				height: 0,
-				pixels: null
-			},
-			posZ: {
-				src: "/img/posz.jpg",
-				width: 0,
-				height: 0,
-				pixels: null
-			},
-			negZ: {
-				src: "/img/negz.jpg",
-				width: 0,
-				height: 0,
-				pixels: null
-			}
-		};
+	constructor(data: CubemapData) {
+		this._images = data;
 	}
 
-	load(): Promise<void[]> {
-		let all: Promise<void>[] = [];
+	// nacte a dekoduje vsechny steny
+	static async load(): Promise<CubemapData> {
+		let faces = Object.keys(SOURCES) as CubemapFace[];
+		let images = await Promise.all(faces.map(face => Cubemap._loadImage(SOURCES[face])));
+		let data = {} as CubemapData;
 
-		Object.values(this._images).forEach(imgItem => {
-			all.push(this._loadImage(imgItem));
+		faces.forEach((face, ind) => {
+			data[face] = images[ind];
 		});
 
-		return Promise.all(all);
+		return data;
 	}
 
 	getColor(direction: Vector3): Color {
-		let imgItem: CubemapImage;
+		let imgItem: CubemapImage | null;
 		let ma = direction.masterAxis();
 		let x = 0;
 		let y = 0;
@@ -116,44 +93,59 @@ export default class Cubemap {
 		return this._bilinearInterpolation(x, y, imgItem);
 	}
 
-	private _loadImage(imgItem: CubemapImage): Promise<void> {
-		return new Promise(resolve => {
-			let image = new Image();
-			image.src = imgItem.src;
-			image.addEventListener("load", () => {
-				let canvas = document.createElement("canvas");
-				canvas.width = image.width;
-				canvas.height = image.height;
-				let ctx = canvas.getContext("2d");
+	private static async _loadImage(src: string): Promise<CubemapImage | null> {
+		try {
+			let response = await fetch(src);
 
-				if (!ctx) {
-					resolve();
-					return;
-				}
+			if (!response.ok) {
+				throw new Error(`Loading ${src} failed with status ${response.status}`);
+			}
 
-				// pixely precteme jednou cele, dal se cte jen z pole
-				ctx.drawImage(image, 0, 0);
-				imgItem.width = image.width;
-				imgItem.height = image.height;
-				imgItem.pixels = ctx.getImageData(0, 0, image.width, image.height).data;
+			let bitmap = await createImageBitmap(await response.blob());
+			let canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+			let ctx = canvas.getContext("2d");
 
-				resolve();
-			});
-			image.addEventListener("error", () => {
-				resolve();
-			});
-		});
+			if (!ctx) {
+				return null;
+			}
+
+			// pixely precteme jednou cele, dal se cte jen z pole
+			ctx.drawImage(bitmap, 0, 0);
+			let data = ctx.getImageData(0, 0, bitmap.width, bitmap.height).data;
+			let pixels: Uint8ClampedArray = data;
+
+			// sdilena pamet - workery si pole nekopiruji
+			if (crossOriginIsolated) {
+				pixels = new Uint8ClampedArray(new SharedArrayBuffer(data.length));
+				pixels.set(data);
+			}
+
+			let image = {
+				width: bitmap.width,
+				height: bitmap.height,
+				pixels
+			};
+			bitmap.close();
+
+			return image;
+		}
+		catch (e) {
+			// pozadi z teto steny bude cerne
+			console.error(e);
+
+			return null;
+		}
 	}
 
 	// http://www.devmaster.net/articles/raytracing_series/part6.php
 	// S = (1-p)(1-q) a + (1-p) q c + p (1-q) b + p q d
-	private _bilinearInterpolation(x: number, y: number, imgItem: CubemapImage): Color {
-		let { width, height, pixels } = imgItem;
-
+	private _bilinearInterpolation(x: number, y: number, imgItem: CubemapImage | null): Color {
 		// obrazek se nepodarilo nacist
-		if (!pixels) {
+		if (!imgItem) {
 			return Color.black();
 		}
+
+		let { width, height, pixels } = imgItem;
 
 		x = width * x;
 		y = height * y;

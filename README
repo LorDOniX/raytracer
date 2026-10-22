@@ -9,6 +9,16 @@ npm run build      # produkcni build do dist/
 npm run watch      # vyvojovy build do dist/ se sledovanim zmen
 npm run typecheck  # kontrola typu (TypeScript), build ji spousti automaticky
 
+Render bezi ve Web Workerech (?threads=N meni jejich pocet, ?phong=0 zapne
+pruhledny material). Pozadi (cubemapa) se mezi workery sdili pres SharedArrayBuffer,
+coz vyzaduje cross-origin isolation - server musi posilat hlavicky
+
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+
+Dev server je posila sam, pri nasazeni dist/ je treba je nastavit na serveru.
+Bez nich render funguje taky, jen se cubemapa (~96 MB) kopiruje do kazdeho workeru.
+
 Workflow:
 
 - load ply
