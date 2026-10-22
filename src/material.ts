@@ -21,6 +21,19 @@ export default class Material {
 		this._ior = 1.5;
 	}
 
+	// ciste sklo: skoro bez difuzni slozky, ostre odlesky, odraz a pruchod rozdeli jen fresnel
+	// (propustene svetlo se uz nenasobi odrazivosti)
+	static glass(): Material {
+		let material = new Material();
+
+		material._ambiente.setXYZ(0, 0, 0);
+		material._diffuse.setXYZ(0.05, 0.05, 0.05);
+		material._shininess = 200;
+		material._reflectivity = 1;
+
+		return material;
+	}
+
 	get ambiente(): Vector3 {
 		return this._ambiente;
 	}

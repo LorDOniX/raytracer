@@ -43,8 +43,8 @@ export default class Raytracer {
 		this._bvh = bvh;
 		this._cubemap = null;
 
-		// material
-		this._materials = [new Material()];
+		// material, pruhledny rezim ma vlastni sklo
+		this._materials = [this._opts.phong ? new Material() : Material.glass()];
 
 		// svetlo
 		this._lights = [new Light(new Vector3(0.2, 0.3, 0.5)), new Light(new Vector3(0, 0.2, 0.1))];

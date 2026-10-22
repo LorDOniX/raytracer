@@ -133,9 +133,12 @@ Všechny body plánu jsou hotové.
 
 ## Další nápady mimo optimalizace (neprobrané s uživatelem, jen navrhnout)
 
-- **Materiál skla:** výchozí `Material` má difuzní složku 0.5 a odrazivost 0.8 se násobí i do propuštěného
-  světla, takže sklo vychází tmavé a lom moc není vidět. Chtělo by to samostatný materiál pro sklo
-  (malá difuze, bez útlumu na průchodu, případně absorpce podle vzdálenosti).
+- ~~**Materiál skla**~~ hotovo: `Material.glass()` (difuze 0.05, bez ambientu, shininess 200, odrazivost 1,
+  takže odraz a průchod dělí jen Fresnel), použije se pro `?phong=0`. Lom je teď vidět, králík ale vychází
+  tmavý, protože za ním je v cubemapě tmavý pilíř se schodištěm (ověřeno sklem s ior ≈ 1, kde je králík
+  neviditelný a pozadí navazuje). Absorpce podle vzdálenosti (Beer–Lambert) se zkoušela, na malém hrbolatém
+  modelu dělala jen barevný šum, takže se nepoužívá. Větší `maxDepth` ani okolí místo černé na konci hloubky
+  obraz skoro nezměnily. Sklo stíní jako neprůhledné (stínové paprsky jím neprocházejí).
 - Ambientní složka světel je nulová (`Light._ambiente`), stíny jsou úplně černé.
 - `less/main.less`: canvas má `min-width: 1280px`, takže se malý obraz rozmaže. Zvážit `image-rendering: pixelated`.
 - PLY parser umí jen ASCII (binární formát hlásí chybou).
