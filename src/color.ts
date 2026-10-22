@@ -47,10 +47,15 @@ export default class Color {
 			b *= 255;
 		}
 
-		r = r >>> 0;
-		g = g >>> 0;
-		b = b >>> 0;
+		r = Color._clamp(r);
+		g = Color._clamp(g);
+		b = Color._clamp(b);
 
 		return new Color(r, g, b);
+	}
+
+	// omezeni na 0-255, NaN -> 0
+	private static _clamp(value: number): number {
+		return Math.min(Math.max(value, 0), 255) >>> 0;
 	}
 }

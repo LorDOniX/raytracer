@@ -21,7 +21,9 @@ class Main {
 		this._startTime = Date.now();
 		this._ply = new Ply();
 
-		this._run();
+		this._run().catch(e => {
+			console.error(e);
+		});
 	}
 
 	private async _run(): Promise<void> {
@@ -35,7 +37,10 @@ class Main {
 		await this._ply.load(SIZE.TRI_69K);
 		let geometry = new Geometry(this._ply);
 		let bvh = new BVH(geometry);
+		// ?phong=0 zapne pruhledny material
+		let params = new URLSearchParams(location.search);
 		let render = new Render(camera, bvh, {
+			phong: params.get("phong") != "0",
 			startTime: this._startTime
 		});
 		await render.render();

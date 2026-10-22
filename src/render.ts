@@ -5,15 +5,19 @@ import Material from "./material";
 import Light from "./light";
 import Vector3 from "./vector3";
 import Ray from "./ray";
+import * as math from "./math";
 import type Camera from "./camera";
 import type BVH from "./bvh";
 
-// vzduch a material
+// index lomu vzduchu, material ma vlastni (Material.ior)
 const IOR_AIR = 1.000293;
-const IOR_MATERIAL = 1.5;
+// posun pocatku noveho paprsku od povrchu, aby nezasahl plochu, ze ktere vychazi
+const RAY_EPSILON = 1e-5;
 
 export interface RenderOptions {
+	// pocet casti (pruhu) obrazku, ktere se renderuji postupne
 	threadsCount: number;
+	// true - phong s odrazivosti, false - pruhledny material (lom a odraz podle fresnela)
 	phong: boolean;
 	background: boolean;
 	maxDepth: number;
@@ -35,7 +39,7 @@ export default class Render {
 
 	constructor(camera: Camera, bvh: BVH, opts?: Partial<RenderOptions>) {
 		this._opts = Object.assign({
-			threadsCount: 4, // nasobky 2
+			threadsCount: 4,
 			phong: true,
 			background: true,
 			maxDepth: 6,
@@ -76,176 +80,195 @@ export default class Render {
 		console.log(`Pre render time ${((Date.now() - this._opts.startTime) / 1000).toFixed(2)}s`);
 		console.log(`Render starting with ${ this._opts.threadsCount } threads...`);
 
-		let columnStep = Math.max(this._opts.threadsCount * 0.5, 1);
-		let rowStep = Math.max(this._opts.threadsCount * 0.5, 1);
-		let columnWidth = this._camera.width / columnStep;
-		let rowHeight = this._camera.height / rowStep;
+		// obrazek rozdelime na vodorovne pruhy s celymi pixely
+		let parts = Math.max(Math.floor(this._opts.threadsCount), 1);
+		let width = this._camera.width;
+		let height = this._camera.height;
+		let all: Promise<void>[] = [];
 
-		for (let j = 0; j < rowStep; j++) {
-			for (let i = 0; i < columnStep; i++) {
-				this._renderPart(i * columnWidth, (i + 1) * columnWidth, j * rowHeight, (j + 1) * rowHeight);
-			}
+		for (let i = 0; i < parts; i++) {
+			all.push(this._renderPart(0, width, Math.floor(i * height / parts), Math.floor((i + 1) * height / parts)));
 		}
+
+		await Promise.all(all);
 	}
 
-	private _renderPart(fromX: number, toX: number, fromY: number, toY: number): void {
+	private _renderPart(fromX: number, toX: number, fromY: number, toY: number): Promise<void> {
 		this._threads++;
 
-		setTimeout(() => {
-			let time = Date.now();
+		return new Promise(resolve => {
+			setTimeout(() => {
+				for (let y = fromY; y < toY; y++) {
+					for (let x = fromX; x < toX; x++) {
+						// paprsek stredem pixelu
+						let ray = this._camera.generateRay(x + 0.5, y + 0.5);
+						let color = this._raytrace(ray);
 
-			for (let y = fromY; y < toY; y++) {
-				for (let x = fromX; x < toX; x++) {
-					let ray = this._camera.generateRay(x, y);
-					let color = this._raytrace(ray);
-
-					// nastavime barvu
-					this._graphics.putPixel(x, y, color);
+						// nastavime barvu
+						this._graphics.putPixel(x, y, color);
+					}
 				}
-			}
 
-			this._doneThreads++;
+				this._doneThreads++;
 
-			console.log(`Render status ${Math.round(this._doneThreads / this._threads * 100)}%`);
+				console.log(`Render status ${Math.round(this._doneThreads / this._threads * 100)}%`);
 
-			if (this._threads == this._doneThreads) {
-				console.log(`Render time ${((Date.now() - this._startTime) / 1000).toFixed(2)}s`);
-			}
-		}, 0);
+				if (this._threads == this._doneThreads) {
+					console.log(`Render time ${((Date.now() - this._startTime) / 1000).toFixed(2)}s`);
+				}
+
+				resolve();
+			}, 0);
+		});
 	}
 
-	private _raytrace(rayArg: Ray): Color {
-		let ray = rayArg;
+	// barva pixelu pro primarni paprsek
+	private _raytrace(ray: Ray): Color {
+		this._bvh.traverse(ray);
+
+		// nic jsme nezasahli -> pozadi
+		if (!ray.changed) {
+			return this._opts.background ? this._cubemap.getColor(ray.bgDirection) : Color.black();
+		}
+
+		return Color.fromVector3(this._shade(ray, 0, 1), true);
+	}
+
+	// prispevek sekundarniho paprsku - barva 0-1 uz vynasobena koeficientem
+	private _trace(ray: Ray, depth: number, coefficient: number): Vector3 {
+		this._bvh.traverse(ray);
+
+		// paprsek odchazi do okoli, vidi pozadi
+		if (!ray.changed) {
+			return this._environment(ray.direction).mul(coefficient);
+		}
+
+		return this._shade(ray, depth, coefficient);
+	}
+
+	// novy paprsek z bodu zasahu, pokud jeste ma smysl ho sledovat
+	private _secondary(origin: Vector3, direction: Vector3, depth: number, coefficient: number): Vector3 {
+		if (depth >= this._opts.maxDepth || coefficient <= this._opts.minCoefficient) {
+			return new Vector3();
+		}
+
+		let ray = new Ray(origin, direction);
+
+		return this._trace(ray, depth + 1, coefficient);
+	}
+
+	// barva pozadi ve smeru paprsku, 0-1
+	private _environment(direction: Vector3): Vector3 {
+		if (!this._opts.background) {
+			return new Vector3();
+		}
+
+		let color = this._cubemap.getColor(this._camera.backgroundDirection(direction));
+
+		return new Vector3(color.r, color.g, color.b).div(255);
+	}
+
+	// osvetleni bodu zasahu a pokracovani odrazenym a pripadne propustenym paprskem
+	private _shade(ray: Ray, depth: number, coefficient: number): Vector3 {
+		// souradnice zasahu
+		let target = ray.getTarget();
+		let triangle = ray.triangle;
+
+		if (!target || !triangle) {
+			return new Vector3();
+		}
+
+		// neco jsme trefili, ziskame material zasazeneho objektu
+		let material = this._materials[0];
+		// geometricka normala trojuhelniku urcuje strany povrchu, interpolovana slouzi ke stinovani
+		let geometricNormal = triangle.perFaceNormal.clone();
+		let normal = triangle.normal(target);
+		// paprsek prichazi zevnitr objektu, obe normaly otocime proti paprsku
+		let inside = geometricNormal.dotProduct(ray.direction) > 0;
+
+		if (inside) {
+			geometricNormal.mulApply(-1);
+			normal.mulApply(-1);
+		}
+
+		// body tesne pred a za povrchem - pocatky novych paprsku
+		let front = target.plus(geometricNormal.mul(RAY_EPSILON));
+		let back = target.minus(geometricNormal.mul(RAY_EPSILON));
+
+		// odrazivost materialu
+		coefficient *= material.reflectivity;
+
+		let color = this._lighting(ray, target, front, normal, material, coefficient);
+		let reflected = math.reflect(ray.direction, normal);
+
+		// interpolovana normala muze odrazit paprsek pod povrch, pak odrazime podle geometricke
+		if (reflected.dotProduct(geometricNormal) <= 0) {
+			reflected = math.reflect(ray.direction, geometricNormal);
+		}
+
+		if (this._opts.phong) {
+			color.plusApply(this._secondary(front, reflected, depth, coefficient));
+
+			return color;
+		}
+
+		// index lomu prostredi, ze ktereho paprsek prichazi (n1) a do ktereho vstupuje (n2)
+		let n1 = inside ? material.ior : IOR_AIR;
+		let n2 = inside ? IOR_AIR : material.ior;
+		// interpolovana normala muze byt od paprsku odvracena
+		let refraction = math.refract(ray.direction, normal.dotProduct(ray.direction) < 0 ? normal : geometricNormal, n1, n2);
+
+		// lomeny paprsek musi jit pod povrch, jinak lamame podle geometricke normaly
+		if (refraction.refracted && refraction.refracted.dotProduct(geometricNormal) >= 0) {
+			refraction = math.refract(ray.direction, geometricNormal, n1, n2);
+		}
+
+		// odrazena cast (pri totalnim odrazu vse)
+		color.plusApply(this._secondary(front, reflected, depth, coefficient * refraction.reflectance));
+
+		// propustena cast
+		if (refraction.refracted) {
+			color.plusApply(this._secondary(back, refraction.refracted, depth, coefficient * (1 - refraction.reflectance)));
+		}
+
+		return color;
+	}
+
+	// phongovo osvetleni bodu target ze vsech svetel, vynasobene koeficientem
+	// origin - pocatek stinovych paprsku tesne pred povrchem
+	private _lighting(ray: Ray, target: Vector3, origin: Vector3, normal: Vector3, material: Material, coefficient: number): Vector3 {
 		let color = new Vector3();
-		let depth = 0;
-		// koeficient utlumu odrazivosti 1
-		let coefficient = 1;
-		// byl aspon 1 zasah ?
-		let hits = 0;
-		let currentMaterial = IOR_MATERIAL;
 
-		do {
-			this._bvh.traverse(ray);
+		for (let li = 0; li < this._lights.length; ++li) {
+			let light = this._lights[li];
 
-			// souradnice zasahu
-			let target = ray.getTarget();
+			// ambientni osvetleni je pritomno vzdy
+			color.plusApply(material.ambiente.mul(light.ambiente, coefficient));
 
-			if (target && ray.triangle) {
-				// zasah ++
-				hits++;
+			// smerovy vektor od bodu zasahu k svetelnemu zdroji
+			let l = light.position.minus(target);
+			let lightDistance = l.norm();
+			l.normalize();
+			
+			// paprsek z bodu target do svetla, zasahy za svetlem nestini
+			let shadowRay = new Ray(origin, l, undefined, lightDistance);
+			// je target ve stinu
+			this._bvh.traverse(shadowRay);
 
-				// neco jsme trefili, ziskame material zasazeneho objektu
-				let material = this._materials[0];
-				// interpolovana normala plochy v bode target
-				let targetNormal = ray.triangle.normal(target);
-				let r = ray.direction.minus(targetNormal.mul(2 * targetNormal.dotProduct(ray.direction)));
-				
-				if (!this._opts.phong) {
-					// materialy
-					let n1 = currentMaterial;
-					let n2 = (n1 == IOR_AIR) ? IOR_MATERIAL : IOR_AIR;
+			if (!shadowRay.changed) {
+				// target neni ve stinu, vypocteme tedy i ostatni slozky osvetleni
+				// odrazeny paprsek
+				let lr = l.minus(normal.mul(2 * normal.dotProduct(l)));
 
-					// snell's law
-					let cosTheta1 = Math.abs(targetNormal.dotProduct(ray.direction.mul(-1)));
-					let cosTheta2 = Math.sqrt(1 - Math.pow(n1 / n2, 2) * (1 - Math.pow(cosTheta1, 2)));
-					// goniometricka 1 dopocteni
-					let sinTheta1 = Math.sqrt(1 - Math.pow(cosTheta1, 2));
-					// pokud je tato hodnota vetsi jak 1 -> totalni reflexe
-					let sinTheta2 = (n1 / n2) * sinTheta1;
+				// difuzni
+				color.plusApply(material.diffuse.mul(light.diffuse, coefficient, Math.max(normal.dotProduct(l), 0)));
 
-					// nyni budeme pocitat fresnel equations
-					// cost theta i = cos theta 1 apod. pro theta t
-					let Rs = Math.pow((n1 * cosTheta1 - n2 * cosTheta2) / (n1 * cosTheta1 + n2 * cosTheta2), 2);
-					let Rp = Math.pow((n1 * cosTheta2 - n2 * cosTheta1) / (n1 * cosTheta2 + n2 * cosTheta1), 2);
-
-					let R = (Rs + Rp) / 2;
-					let T = 1 - R;
-					// material - transmisivity
-					let matTran = 1;
-
-					// ruska ruleta, nahodne cislo <0..1>
-					let rr = Math.random();
-
-					if (rr <= R) {
-						// odrazeny paprsek - reflect
-						matTran = R;
-						currentMaterial = n1;
-
-						// tento kod je podobny jak ten nahore z phonga
-						r = ray.direction.plus(targetNormal.mul(2 * cosTheta1));
-						r.normalize();
-					}
-					else if (rr <= R + T) {
-						// propusteny paprsek - refract
-						matTran = T;
-						currentMaterial = n2;
-
-						// smerovy paprsek noveho paprsku ulozime do r
-						r = ray.direction.mul(n1 / n2).plus(targetNormal.mul(n1 / n2 * cosTheta1 - cosTheta2));
-						r.normalize();
-					}
-
-					// ruska ruleta pro material transmitivity, jinak phong pouze reflectivity
-					coefficient *= matTran * material.reflectivity;
-				}
-				else {
-					// pouze odrazivoast materialu
-					coefficient *= material.reflectivity;
-				}
-
-				// odražený nebo propuštěný paprsek
-				let newRay = new Ray(target.plus(r.mul(0.001)), r);
-
-				// vypocet prispevku osvetleni bodu target ze vsech svetel
-				for (let li = 0; li < this._lights.length; ++li) {
-					let light = this._lights[li];
-
-					// ambientni osvetleni je pritomno vzdy
-					color.plusApply(material.ambiente.mul(light.ambiente, coefficient));
-
-					// smerovy vektor od bodu zasahu k svetelnemu zdroji
-					let l = light.position.minus(target);
-					l.normalize();
-					
-					// paprsek z bodu target do svetla
-					let shadowRay = new Ray(target.plus(l.mul(0.001)), l);
-					// je target ve stinu
-					this._bvh.traverse(shadowRay);
-
-					if (!shadowRay.changed) {
-						// target neni ve stinu, vypocteme tedy i ostatni slozky osvetleni
-						// odrazeny paprsek
-						let lr = l.minus(targetNormal.mul(2 * targetNormal.dotProduct(l)));
-
-						// difuzni
-						color.plusApply(material.diffuse.mul(light.diffuse, coefficient, Math.max(targetNormal.dotProduct(l), 0)));
-
-						// spekularni
-						let ldd = Math.max(lr.dotProduct(ray.direction), 0);
-						color.plusApply(material.specular.mul(light.specular, coefficient, Math.pow(ldd, material.shininess)));
-					}
-				}
-
-				ray = newRay; // trasování pokračuje s novým paprskem
-			}
-			else {
-				// nic jsme netrefili, končíme s tím, co je v color
-				break;
+				// spekularni
+				let ldd = Math.max(lr.dotProduct(ray.direction), 0);
+				color.plusApply(material.specular.mul(light.specular, coefficient, Math.pow(ldd, material.shininess)));
 			}
 		}
-		while ((depth++ < this._opts.maxDepth) && (coefficient > this._opts.minCoefficient));
 
-		// nic jsme nezasahli ?
-		if (hits == 0) {
-			if (this._opts.background) {
-				return this._cubemap.getColor(ray.bgDirection);
-			}
-			else {
-				return Color.black();
-			}
-		}
-		else {
-			return Color.fromVector3(color, true);
-		}
+		return color;
 	}
 }

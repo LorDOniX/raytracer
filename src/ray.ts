@@ -10,12 +10,13 @@ export default class Ray {
 	private _changed: boolean;
 	private _triangle: Triangle | null;
 
-	constructor(origin?: Vector3, direction?: Vector3, bgDirection?: Vector3) {
+	// maxDistance - zasahy dal nez tato vzdalenost se ignoruji (napr. stinovy paprsek za svetlem)
+	constructor(origin?: Vector3, direction?: Vector3, bgDirection?: Vector3, maxDistance = Infinity) {
 		this._origin = origin || new Vector3();
 		this._direction = direction || new Vector3();
 		this._bgDirection = bgDirection || new Vector3(); // vektor pozadi
 		this._inverted = this._direction.inverted(); // invertovany paprsek
-		this._distance = Infinity;
+		this._distance = maxDistance;
 		this._changed = false;
 		this._triangle = null;
 	}

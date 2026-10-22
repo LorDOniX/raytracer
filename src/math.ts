@@ -1,3 +1,4 @@
+import type Vector3 from "./vector3";
 import type { Axis } from "./vector3";
 import type AABB from "./aabb";
 import type Ray from "./ray";
@@ -134,4 +135,50 @@ export function rayBoxIntersection(ray: Ray, aabb: AABB, t0: number, t1: number)
 	else {
 		return false;
 	}
+}
+
+// odraz smeru podle normaly
+export function reflect(direction: Vector3, normal: Vector3): Vector3 {
+	return direction.minus(normal.mul(2 * normal.dotProduct(direction)));
+}
+
+export interface Refraction {
+	// podil odrazeneho svetla (fresnel), propusti se 1 - reflectance
+	reflectance: number;
+	// smer lomeneho paprsku, null pri totalnim odrazu
+	refracted: Vector3 | null;
+}
+
+/**
+ * Lom paprsku na rozhrani (snelluv zakon) a podil odrazeneho svetla (fresnelovy rovnice).
+ *
+ * @param  direction Smer paprsku
+ * @param  normal    Normala otocena proti paprsku
+ * @param  n1        Index lomu prostredi, ze ktereho paprsek prichazi
+ * @param  n2        Index lomu prostredi, do ktereho vstupuje
+ */
+export function refract(direction: Vector3, normal: Vector3, n1: number, n2: number): Refraction {
+	let cosI = -normal.dotProduct(direction);
+	let eta = n1 / n2;
+	// sin^2 uhlu lomu
+	let sin2T = eta * eta * (1 - cosI * cosI);
+
+	// totalni odraz
+	if (sin2T >= 1) {
+		return {
+			reflectance: 1,
+			refracted: null
+		};
+	}
+
+	let cosT = Math.sqrt(1 - sin2T);
+	let Rs = Math.pow((n1 * cosI - n2 * cosT) / (n1 * cosI + n2 * cosT), 2);
+	let Rp = Math.pow((n1 * cosT - n2 * cosI) / (n1 * cosT + n2 * cosI), 2);
+	let refracted = direction.mul(eta).plus(normal.mul(eta * cosI - cosT));
+	refracted.normalize();
+
+	return {
+		reflectance: (Rs + Rp) / 2,
+		refracted
+	};
 }

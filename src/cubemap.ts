@@ -154,39 +154,17 @@ export default class Cubemap {
 		let p = x - Math.floor(x);
 		let q = y - Math.floor(y);
 
-		// potrebuje 4 souradnice okolnich pixelu
-		let p1x, p2x, p3x, p4x;
-		let p1y, p2y, p3y, p4y;
+		// 4 okolni pixely, na okraji obrazku se souradnice omezi
+		let x0 = Math.min(Math.floor(x), width - 1);
+		let y0 = Math.min(Math.floor(y), height - 1);
+		let x1 = Math.min(x0 + 1, width - 1);
+		let y1 = Math.min(y0 + 1, height - 1);
 
-		// omezeni sirky
-		if (x >= width - 1) {
-			p1x = p2x = p3x = p4x = Math.floor(x);
-		}
-		else
-		{
-			p1x = Math.floor(x);
-			p2x = Math.floor(x);
-			p3x = Math.floor(x) + 1;
-			p4x = Math.floor(x) + 1;
-		}
-
-		// omezeni vysky
-		if (y >= height - 1) {
-			p1y = p2y = p3y = p4y = Math.floor(y);
-		}
-		else
-		{
-			p1y = Math.floor(y);
-			p2y = Math.floor(y) + 1;
-			p3y = Math.floor(y);
-			p4y = Math.floor(y) + 1;
-		}
-
-		// 4 barvy pixelu
-		let a = this._getPixel(imgItem, p1x, p1y);
-		let b = this._getPixel(imgItem, p2x, p2y);
-		let c = this._getPixel(imgItem, p3x, p3y);
-		let d = this._getPixel(imgItem, p4x, p4y);
+		// a [x0, y0], b [x1, y0], c [x0, y1], d [x1, y1]
+		let a = this._getPixel(imgItem, x0, y0);
+		let b = this._getPixel(imgItem, x1, y0);
+		let c = this._getPixel(imgItem, x0, y1);
+		let d = this._getPixel(imgItem, x1, y1);
 		let S = a.mul((1 - p) * (1 - q)).plus(
 			c.mul((1 - p) * q),
 			b.mul(p * (1 - q)),

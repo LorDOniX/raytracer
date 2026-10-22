@@ -7,24 +7,18 @@ export interface GeometryOptions {
 	scale: number;
 }
 
-interface GeometryItem {
-	position: Vector3;
-	normal: Vector3;
-	textureCoord: Vector3;
-}
-
 interface TriangleItem {
-	ids: number[];
+	// indexy vrcholu trojuhelniku
+	ids: [number, number, number];
 	triangle: Triangle;
 }
 
 export default class Geometry {
 	private _ply: Ply;
 	private _opts: GeometryOptions;
-	private _items: GeometryItem[];
+	private _positions: Vector3[];
 	private _triangles: Triangle[];
 	private _triangleItems: TriangleItem[];
-	private _facesIds: Record<number, TriangleItem[]>;
 
 	constructor(ply: Ply, opts?: Partial<GeometryOptions>) {
 		this._ply = ply;
@@ -32,10 +26,9 @@ export default class Geometry {
 			flipNormals: false,
 			scale: 1
 		}, opts);
-		this._items = [];
+		this._positions = [];
 		this._triangles = [];
 		this._triangleItems = [];
-		this._facesIds = {};
 
 		this._create();
 	}
@@ -51,86 +44,66 @@ export default class Geometry {
 			elements.vertex.items.forEach(vertex => {
 				let { x, y, z } = vertex.values;
 				let position = new Vector3(x, y, z);
-				let normal = new Vector3(x, y, z);
-				let textureCoord = new Vector3();
 
 				position.mulApply(this._opts.scale);
-
-				if (this._opts.flipNormals) {
-					normal.mulApply(-1);
-				}
-				normal.normalize();
-
-				this._items.push({
-					position,
-					normal,
-					textureCoord
-				});
+				this._positions.push(position);
 			});
 		}
 
 		if ("face" in elements) {
 			elements.face.items.forEach(face => {
-				let items = face.ids.map(id => this._items[id]);
-				let triangle = new Triangle(
-					items[0].position,
-					items[1].position,
-					items[2].position,
-					items[0].normal,
-					items[1].normal,
-					items[2].normal,
-					this._opts.flipNormals
-				);
-				let triangleItem: TriangleItem = {
-					ids: face.ids,
-					triangle
-				};
+				// polygon rozdelime na trojuhelniky (fan), trojuhelnik zustane jak je
+				for (let i = 1; i < face.ids.length - 1; i++) {
+					let ids: [number, number, number] = [face.ids[0], face.ids[i], face.ids[i + 1]];
+					let triangle = new Triangle(
+						this._positions[ids[0]],
+						this._positions[ids[1]],
+						this._positions[ids[2]],
+						undefined,
+						undefined,
+						undefined,
+						this._opts.flipNormals
+					);
 
-				face.ids.forEach(id => {
-					if (!(id in this._facesIds)) {
-						this._facesIds[id] = [];
-					}
-
-					this._facesIds[id].push(triangleItem);
-				});
-
-				this._triangleItems.push(triangleItem);
-				this._triangles.push(triangle);
+					this._triangleItems.push({
+						ids,
+						triangle
+					});
+					this._triangles.push(triangle);
+				}
 			});
 		}
 
-		this._updatePerVertexNormals(!this._opts.flipNormals);
+		this._updatePerVertexNormals();
 	}
 
-	private _updatePerVertexNormals(flipNormals: boolean): void {
+	// normala vrcholu je prumer normal okolnich trojuhelniku vazeny jejich plochou
+	private _updatePerVertexNormals(): void {
 		console.log("Geometry");
 		console.log(`Triangles : ${ this._triangles.length }`);
-		console.log(`Calculating normals [${flipNormals ? "flip" : "noflip"}]...`);
+		console.log(`Calculating normals [${this._opts.flipNormals ? "flip" : "noflip"}]...`);
 
 		let time = Date.now();
+		let normals = this._positions.map(() => new Vector3());
 
-		this._triangleItems.forEach(triangleItem => {
-			let triangle = triangleItem.triangle;
+		this._triangleItems.forEach(({ ids, triangle }) => {
+			let faceNormal = triangle.perFaceNormal.mul(triangle.area());
 
-			for (let vertex = 0; vertex < 3; vertex++) {
-				let perVertexNormal = triangle.perFaceNormal.clone();
-				perVertexNormal.mulApply(triangle.area());
+			ids.forEach(id => {
+				normals[id].plusApply(faceNormal);
+			});
+		});
 
-				let incidentTriangles = vertex < triangleItem.ids.length ? this._facesIds[triangleItem.ids[vertex]] : [];
-				incidentTriangles.forEach(incTriang => {
-					let area = incTriang.triangle.area();
-					let incNormal = incTriang.triangle.perFaceNormal.clone();
-					incNormal.mulApply(area);
-
-					perVertexNormal.plusApply(incNormal);
-				});
-
-				if (flipNormals) {
-					perVertexNormal.mulApply(-1);
-				}
-				perVertexNormal.normalize();
-				triangle.setPerVertexNormal(vertex, perVertexNormal);
+		normals.forEach(normal => {
+			if (!normal.isEmpty()) {
+				normal.normalize();
 			}
+		});
+
+		this._triangleItems.forEach(({ ids, triangle }) => {
+			ids.forEach((id, vertex) => {
+				triangle.setPerVertexNormal(vertex, normals[id]);
+			});
 		});
 
 		console.log(`Normals time ${((Date.now() - time) / 1000).toFixed(2)}s`);
