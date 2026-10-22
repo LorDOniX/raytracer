@@ -152,4 +152,8 @@ Všechny body plánu jsou hotové.
   binární 10–30 ms a s float32 poloviční soubor (1,6 MB místo 3 MB). Výchozí model zůstal ASCII; převod
   na binární by ušetřil ~30–40 ms přípravy, ale souřadnice by se zaokrouhlily na float32 (obraz by se nepatrně změnil).
 - `npm audit` hlásí `braces` uvnitř `webpack-dev-server` (jen vývojová závislost, oprava zatím jen downgradem).
+  Prověřeno 2026-10-22: beze změny, zranitelné jsou všechny verze `braces` (5 nálezů přes `micromatch` →
+  `http-proxy-middleware` → `webpack-dev-server` → `webpack-cli`), „oprava“ je downgrade na `webpack-dev-server@1.14.1`.
+  Do buildu se nedostane, nic se nedělá. `npm outdated` je prázdný.
 - npm blokuje `postinstall` balíku `esbuild`. Nevadí to, binárka přichází jako volitelná závislost.
+  Prověřeno 2026-10-22: esbuild 0.28.2 s `@esbuild/linux-x64` funguje.

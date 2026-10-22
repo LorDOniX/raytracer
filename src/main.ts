@@ -23,12 +23,12 @@ class Main {
 		// ?phong=0 zapne pruhledny material, ?threads=N pocet workeru, ?aa=N antialiasing N x N vzorku na pixel
 		let params = new URLSearchParams(location.search);
 		let threads = parseInt(params.get("threads") || "");
-		let aa = parseInt(params.get("aa") || "");
+		let aa = parseInt(params.get("aa") || "2");
 		let render = new Render({
 			model: SIZE.TRI_69K,
 			camera: {
-				width: 320 * 0.5,
-				height: 240 * 0.5,
+				width: 320 * 6,
+				height: 240 * 6,
 				eye: [-0.067, 0.237, 0.184],
 				transformation: [
 					[-0.982, 0.064, 0.177],
