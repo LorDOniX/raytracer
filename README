@@ -10,7 +10,7 @@ npm run watch      # vyvojovy build do dist/ se sledovanim zmen
 npm run typecheck  # kontrola typu (TypeScript), build ji spousti automaticky
 
 Render bezi ve Web Workerech (?threads=N meni jejich pocet, vychozi min(jader, 8),
-?phong=0 zapne pruhledny material). Scenu (model a BVH) postavi jednou prvni worker.
+?phong=0 zapne pruhledny material, ?aa=N antialiasing N x N vzorku na pixel). Scenu (model a BVH) postavi jednou prvni worker.
 Scena i pozadi (cubemapa) se mezi workery sdili pres SharedArrayBuffer,
 coz vyzaduje cross-origin isolation - server musi posilat hlavicky
 

@@ -34,7 +34,8 @@ Podklad pro další práci (i pro Clauda). Spuštění: „přečti `PLAN.md` a 
     Stavba (`BVHBuilder`) dělí uzly podle binned SAH v ose s největším rozsahem těžišť (od bodu 6).
   - Cubemapa (6× 2048², ~96 MB) se dekóduje jednou v hlavním vlákně a sdílí se přes `SharedArrayBuffer`.
     Vyžaduje to hlavičky COOP/COEP. Dev server je posílá, pro produkci viz README.
-- URL parametry: `?phong=0` zapne průhledný materiál, `?threads=N` nastaví počet workerů (výchozí min(jádra, 8)).
+- URL parametry: `?phong=0` zapne průhledný materiál, `?threads=N` nastaví počet workerů (výchozí min(jádra, 8)),
+  `?aa=N` antialiasing N×N vzorků na pixel (výchozí 1, `RaytracerOptions.aa`).
 
 ### Hotové body
 
@@ -48,6 +49,7 @@ Podklad pro další práci (i pro Clauda). Spuštění: „přečti `PLAN.md` a 
 | 5a | plochá pole, Möller–Trumbore, méně alokací | 1,05 → 0,57 s celkem | 1,75 → 0,73 s celkem |
 | 5b | scéna se staví jednou a sdílí | 0,53 → 0,47 s (4 workery) | 0,67 → 0,60 s (4 workery) |
 | 6 | stavba BVH (těžiště předem, SAH) | 0,55 → 0,35 s (8 workerů) | 0,60 → 0,43 s (8 workerů) |
+| 7 | antialiasing `?aa=N` (kvalita, ne rychlost) | 160×120: aa=2 0,35 s, aa=4 0,44 s | 160×120: aa=2 0,44 s, aa=4 0,72 s |
 
 Měřeno v 320×240 na 16vláknovém stroji. Doma budou čísla jiná, porovnávej jen relativně
 na stejném stroji (nejdřív si změř výchozí stav pro aktuální `HEAD`).
@@ -93,6 +95,13 @@ Když SAH nejde (všechna těžiště v jednom bodě), uzel se rozdělí v půlc
 Příprava je teď ~0,2 s (z toho start workeru, načtení PLY, parsování a stavba). Další zrychlení by chtělo
 binární PLY nebo předpočítanou scénu, to už je mimo optimalizace výpočtu.
 
+Bod 7: stratifikovaný jitter (pixel rozdělený na N×N dílků, v každém vzorek na náhodném místě), náhoda
+z hashe souřadnic pixelu (`math.hashRandom`), takže obraz je deterministický i při jiném rozdělení mezi workery.
+Vzorky se průměrují po převodu na 0–255. `aa=1` je pixelově shodný s předchozím stavem. Přeskakování vzorků,
+když pomocný paprsek středem pixelu trefí pozadí (jako C++ originál), šetřilo jen 12–16 % a nechávalo zubatý
+obrys králíka zvenku, takže se nepoužívá. C++ originál navíc místo jitteru bere pravidelnou mřížku od rohu pixelu.
+Při 160×120 bez AA (dnešní výchozí stav, 0,33 s) stojí aa=2 jen ~0,02–0,08 s navíc, šlo by zvážit jako výchozí.
+
 ## Měření
 
 Nástroje jsou v `tools/bench/`. Potřebují Node 22+, Chrome (cestu jde změnit přes `CHROME=...`) a bash.
@@ -120,15 +129,7 @@ node tools/bench/compare.mjs /tmp/rt-bench/pred-glass.bin /tmp/rt-bench/po-glass
 
 ## Zbývající body
 
-### Bod 7: antialiasing
-
-Není to optimalizace, ale kvalita: při 160×120 odrazy okolí jiskří (jeden vzorek na pixel).
-- Supersampling N×N vzorků na pixel s jitterem, jako v C++ originálu (`src/cpp/render.cpp`, parametr `aa`).
-  Ten navíc pro pixely, kde pomocný paprsek trefí jen pozadí, další vzorky přeskakuje.
-- Generování paprsků už bere spojité souřadnice: `Camera.generateRay(x + 0.5, y + 0.5)` v `Raytracer.renderTile`.
-- Přidat volbu do `RaytracerOptions` a URL parametr `?aa=N`.
-- **Obraz se tady mění záměrně**, porovnání pixelů neplatí. Výsledek zkontroluj vizuálně (screenshot,
-  viz `devcheck.mjs` nebo `google-chrome --headless=new --screenshot`).
+Všechny body plánu jsou hotové.
 
 ## Další nápady mimo optimalizace (neprobrané s uživatelem, jen navrhnout)
 

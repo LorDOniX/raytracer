@@ -62,6 +62,17 @@ export function deg2Rad(deg: number): number {
 	return (deg / 180 * Math.PI);
 }
 
+// pseudonahodne cislo 0-1 dane tremi celymi cisly (hash), pro stejny vstup vzdy stejne
+export function hashRandom(a: number, b: number, c: number): number {
+	let h = Math.imul(a, 0x27d4eb2d) ^ Math.imul(b, 0x165667b1) ^ Math.imul(c, 0x9e3779b9);
+
+	h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+	h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+	h ^= h >>> 16;
+
+	return (h >>> 0) / 4294967296;
+}
+
 /**
  * Vzdalenost vstupu paprsku do boxu (zaporna, pokud pocatek lezi uvnitr), Infinity pokud box mine
  * nebo box zacina dal nez maxDistance (dosavadni nejblizsi zasah). Paprsek se predava po slozkach,

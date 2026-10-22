@@ -19,6 +19,8 @@ export interface RaytracerOptions {
 	background: boolean;
 	maxDepth: number;
 	minCoefficient: number;
+	// antialiasing - aa x aa vzorku na pixel, 1 jen stredem pixelu
+	aa: number;
 }
 
 export default class Raytracer {
@@ -34,7 +36,8 @@ export default class Raytracer {
 			phong: true,
 			background: true,
 			maxDepth: 6,
-			minCoefficient: 1e-2
+			minCoefficient: 1e-2,
+			aa: 1
 		}, opts);
 		this._camera = camera;
 		this._bvh = bvh;
@@ -57,13 +60,13 @@ export default class Raytracer {
 	// vyrenderuje obdelnik obrazku, vraci jeho RGBA pixely
 	renderTile(fromX: number, fromY: number, width: number, height: number): Uint8ClampedArray<ArrayBuffer> {
 		let pixels = new Uint8ClampedArray(width * height * 4);
+		let aa = Math.max(Math.floor(this._opts.aa), 1);
 		let ind = 0;
 
 		for (let y = fromY; y < fromY + height; y++) {
 			for (let x = fromX; x < fromX + width; x++) {
-				// paprsek stredem pixelu
-				let ray = this._camera.generateRay(x + 0.5, y + 0.5);
-				let color = this._raytrace(ray);
+				// bez antialiasingu paprsek stredem pixelu
+				let color = aa > 1 ? this._supersample(x, y, aa) : this._raytrace(this._camera.generateRay(x + 0.5, y + 0.5));
 
 				// nastavime barvu
 				pixels[ind++] = color.r;
@@ -74,6 +77,34 @@ export default class Raytracer {
 		}
 
 		return pixels;
+	}
+
+	/**
+	 * Barva pixelu jako prumer aa x aa vzorku. Pixel se rozdeli na aa x aa dilku a v kazdem se vezme
+	 * vzorek v nahodnem miste (stratifikovany jitter), nahoda je dana souradnicemi pixelu, takze
+	 * obraz vyjde pri kazdem renderu stejne.
+	 */
+	private _supersample(x: number, y: number, aa: number): Color {
+		let r = 0;
+		let g = 0;
+		let b = 0;
+
+		for (let j = 0; j < aa; j++) {
+			for (let i = 0; i < aa; i++) {
+				let sample = (j * aa + i) * 2;
+				let sx = x + (i + math.hashRandom(x, y, sample)) / aa;
+				let sy = y + (j + math.hashRandom(x, y, sample + 1)) / aa;
+				let color = this._raytrace(this._camera.generateRay(sx, sy));
+
+				r += color.r;
+				g += color.g;
+				b += color.b;
+			}
+		}
+
+		let n = aa * aa;
+
+		return new Color(Math.round(r / n), Math.round(g / n), Math.round(b / n));
 	}
 
 	// barva pixelu pro primarni paprsek

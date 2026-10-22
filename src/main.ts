@@ -20,9 +20,10 @@ class Main {
 	}
 
 	private async _run(): Promise<void> {
-		// ?phong=0 zapne pruhledny material, ?threads=N pocet workeru
+		// ?phong=0 zapne pruhledny material, ?threads=N pocet workeru, ?aa=N antialiasing N x N vzorku na pixel
 		let params = new URLSearchParams(location.search);
 		let threads = parseInt(params.get("threads") || "");
+		let aa = parseInt(params.get("aa") || "");
 		let render = new Render({
 			model: SIZE.TRI_69K,
 			camera: {
@@ -36,7 +37,8 @@ class Main {
 				]
 			},
 			raytracer: {
-				phong: params.get("phong") != "0"
+				phong: params.get("phong") != "0",
+				...(aa > 0 ? { aa } : {})
 			}
 		}, {
 			...(threads > 0 ? { threadsCount: threads } : {}),
