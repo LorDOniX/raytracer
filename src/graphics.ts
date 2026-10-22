@@ -29,14 +29,12 @@ export default class Graphics {
 		this._ctx.fillRect(0, 0, this._width, this._height);
 	}
 
-	putPixel(x: number, y: number, color: Color): void {
-		let pixelData = this._ctx.createImageData(1, 1);
-		let d = pixelData.data;
-		d[0] = color.r;
-		d[1] = color.g;
-		d[2] = color.b;
-		d[3] = color.a;
+	// buffer pro obdelnik obrazku - pixely se zapisuji do nej a vykresli se najednou
+	createImageData(width: number, height: number): ImageData {
+		return this._ctx.createImageData(width, height);
+	}
 
-		this._ctx.putImageData(pixelData, x, y);
+	putImageData(imageData: ImageData, x: number, y: number): void {
+		this._ctx.putImageData(imageData, x, y);
 	}
 }

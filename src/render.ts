@@ -98,6 +98,10 @@ export default class Render {
 
 		return new Promise(resolve => {
 			setTimeout(() => {
+				let imageData = this._graphics.createImageData(toX - fromX, toY - fromY);
+				let pixels = imageData.data;
+				let ind = 0;
+
 				for (let y = fromY; y < toY; y++) {
 					for (let x = fromX; x < toX; x++) {
 						// paprsek stredem pixelu
@@ -105,9 +109,15 @@ export default class Render {
 						let color = this._raytrace(ray);
 
 						// nastavime barvu
-						this._graphics.putPixel(x, y, color);
+						pixels[ind++] = color.r;
+						pixels[ind++] = color.g;
+						pixels[ind++] = color.b;
+						pixels[ind++] = color.a;
 					}
 				}
+
+				// cela cast se vykresli najednou
+				this._graphics.putImageData(imageData, fromX, fromY);
 
 				this._doneThreads++;
 
