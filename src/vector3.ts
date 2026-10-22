@@ -95,46 +95,48 @@ export default class Vector3 {
 
 	// *
 	plus(...args: Operand[]): Vector3 {
-		return new Vector3(...this._oper("plus", args));
+		return this.clone()._oper("plus", args);
 	}
 
 	minus(...args: Operand[]): Vector3 {
-		return new Vector3(...this._oper("minus", args));
+		return this.clone()._oper("minus", args);
 	}
 
 	mul(...args: Operand[]): Vector3 {
-		return new Vector3(...this._oper("mul", args));
+		return this.clone()._oper("mul", args);
 	}
 
 	div(...args: Operand[]): Vector3 {
-		return new Vector3(...this._oper("div", args));
+		return this.clone()._oper("div", args);
 	}
 
 	// +=
 	plusApply(...args: Operand[]): void {
-		this.setXYZ(...this._oper("plus", args));
+		this._oper("plus", args);
 	}
 
 	// -=
 	minusApply(...args: Operand[]): void {
-		this.setXYZ(...this._oper("minus", args));
+		this._oper("minus", args);
 	}
 
 	// *=
 	mulApply(...args: Operand[]): void {
-		this.setXYZ(...this._oper("mul", args));
+		this._oper("mul", args);
 	}
 
 	toString(): string {
 		return (`(${this._x.toFixed(5)}, ${this._y.toFixed(5)}, ${this._z.toFixed(5)})`);
 	}
 
-	private _oper(type: Operation, args: Operand[]): [number, number, number] {
+	// postupne provede operaci se vsemi argumenty, vysledek ulozi do sebe
+	private _oper(type: Operation, args: Operand[]): Vector3 {
 		let x = this._x;
 		let y = this._y;
 		let z = this._z;
 
-		args.forEach(arg => {
+		for (let i = 0; i < args.length; i++) {
+			let arg = args[i];
 			let ax = typeof arg === "number" ? arg : arg.x;
 			let ay = typeof arg === "number" ? arg : arg.y;
 			let az = typeof arg === "number" ? arg : arg.z;
@@ -164,8 +166,12 @@ export default class Vector3 {
 					z /= az;
 					break;
 			}
-		});
+		}
 
-		return [x, y, z];
+		this._x = x;
+		this._y = y;
+		this._z = z;
+
+		return this;
 	}
 }

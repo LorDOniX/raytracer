@@ -31,7 +31,7 @@ export async function createRaytracer(config: SceneConfig): Promise<Raytracer> {
 	let ply = new Ply();
 	await ply.load(config.model);
 	let geometry = new Geometry(ply);
-	let bvh = new BVH(geometry);
+	let bvh = new BVH(geometry.mesh);
 
 	return new Raytracer(camera, bvh, config.raytracer);
 }

@@ -1,5 +1,4 @@
 import Vector3 from "./vector3";
-import type Triangle from "./triangle";
 
 export default class Ray {
 	private _origin: Vector3;
@@ -8,7 +7,10 @@ export default class Ray {
 	private _inverted: Vector3;
 	private _distance: number;
 	private _changed: boolean;
-	private _triangle: Triangle | null;
+	// index zasazeneho trojuhelniku (-1 nic) a barycentricke souradnice zasahu (u ve smeru v1 - v0, v ve smeru v2 - v0)
+	private _triangle: number;
+	private _u: number;
+	private _v: number;
 	private _anyHit: boolean;
 
 	// maxDistance - zasahy dal nez tato vzdalenost se ignoruji (napr. stinovy paprsek za svetlem)
@@ -20,7 +22,9 @@ export default class Ray {
 		this._inverted = this._direction.inverted(); // invertovany paprsek
 		this._distance = maxDistance;
 		this._changed = false;
-		this._triangle = null;
+		this._triangle = -1;
+		this._u = 0;
+		this._v = 0;
 		this._anyHit = anyHit;
 	}
 
@@ -54,16 +58,26 @@ export default class Ray {
 		return this._changed;
 	}
 
-	get triangle(): Triangle | null {
+	get triangle(): number {
 		return this._triangle;
 	}
 
+	get u(): number {
+		return this._u;
+	}
+
+	get v(): number {
+		return this._v;
+	}
+
 	// nastavi distance, ale nova vzdalenost musi byt mensi jak posledni, jinak se nic nestane
-	setTarget(distance: number, triangle: Triangle): void {
+	setTarget(distance: number, triangle: number, u: number, v: number): void {
 		if (distance < this._distance) {
 			this._changed = true;
 			this._distance = distance;
 			this._triangle = triangle;
+			this._u = u;
+			this._v = v;
 		}
 	}
 

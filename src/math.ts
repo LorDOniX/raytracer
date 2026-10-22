@@ -1,63 +1,80 @@
 import type Vector3 from "./vector3";
 import type { Axis } from "./vector3";
-import type AABB from "./aabb";
 import type Ray from "./ray";
-import type Triangle from "./triangle";
 
 // anything that avoids division overflow
 const SMALL_NUM = 0.00000001;
 const SORT_MAX_LVLS = 300;
 
-export function rayTriangleIntersection97(ray: Ray, triangle: Triangle): void {
-	// get triangle edge vectors and plane normal
-	let u = triangle.vertices[1].minus(triangle.vertices[0]);
-	let v = triangle.vertices[2].minus(triangle.vertices[0]);
-	let n = u.crossProduct(v); // cross product
+/**
+ * Prusecik paprsku s trojuhelnikem (Moller-Trumbore), zasah ulozi do paprsku i s barycentrickymi
+ * souradnicemi. Trojuhelnik se testuje z obou stran (paprsek muze byt uvnitr objektu).
+ *
+ * @param  ray      Paprsek, jeho pocatek (ox, oy, oz) a smer (dx, dy, dz) se predavaji po slozkach
+ * @param  vertices Vrcholy trojuhelniku po 9 cislech
+ * @param  index    Index trojuhelniku
+ */
+export function rayTriangleIntersection(ray: Ray, vertices: Float64Array, index: number,
+	ox: number, oy: number, oz: number, dx: number, dy: number, dz: number): void {
+	let i = index * 9;
+	let v0x = vertices[i];
+	let v0y = vertices[i + 1];
+	let v0z = vertices[i + 2];
+	// hrany v0 -> v1 a v0 -> v2
+	let e1x = vertices[i + 3] - v0x;
+	let e1y = vertices[i + 4] - v0y;
+	let e1z = vertices[i + 5] - v0z;
+	let e2x = vertices[i + 6] - v0x;
+	let e2y = vertices[i + 7] - v0y;
+	let e2z = vertices[i + 8] - v0z;
+	// p = dir x e2
+	let px = dy * e2z - dz * e2y;
+	let py = dz * e2x - dx * e2z;
+	let pz = dx * e2y - dy * e2x;
+	let det = e1x * px + e1y * py + e1z * pz;
 
-	// triangle is degenerate, do not deal with this case
-	if (n.isEmpty()) return;
+	// paprsek je rovnobezny s rovinou trojuhelniku nebo je trojuhelnik degenerovany
+	if (Math.abs(det) < SMALL_NUM) return;
 
-	let dir = ray.direction;
-	let w0 = ray.origin.minus(triangle.vertices[0]);
-	let a = (-1) * n.dotProduct(w0);
-	let b = n.dotProduct(dir);
+	let invDet = 1 / det;
+	let sx = ox - v0x;
+	let sy = oy - v0y;
+	let sz = oz - v0z;
+	let u = (sx * px + sy * py + sz * pz) * invDet;
 
-	// ray is parallel to triangle plane
-	if (Math.abs(b) < SMALL_NUM) return;
+	if (u < 0 || u > 1) return;
 
-	// get intersect point of ray with triangle plane
-	let r = a / b;
-	// ray goes away from triangle
-	if (r < 0.0) return; // no intersect
-	// for a segment, also test if (r > 1.0) => no intersect
-	let output = ray.origin.plus(dir.mul(r));           // intersect point of ray and plane
-		
-	// is I inside T? je bod output uvnitr trojuhelniku item
-	let uu = u.dotProduct(u);
-	let uv = u.dotProduct(v);
-	let vv = v.dotProduct(v);
-	let w = output.minus(triangle.vertices[0]);
-	let wu = w.dotProduct(u);
-	let wv = w.dotProduct(v);
-	let D = uv * uv - uu * vv;
+	// q = s x e1
+	let qx = sy * e1z - sz * e1y;
+	let qy = sz * e1x - sx * e1z;
+	let qz = sx * e1y - sy * e1x;
+	let v = (dx * qx + dy * qy + dz * qz) * invDet;
 
-	// get and test parametric coords
-	let s = (uv * wv - vv * wu) / D;
-	// I is outside T
-	if (s < 0.0 || s > 1.0) return;
-	let t = (uv * wu - uu * wv) / D;
-	// I is outside T
-	if (t < 0.0 || (s + t) > 1.0) return;
+	if (v < 0 || u + v > 1) return;
 
-	// nastavime nove t
-	ray.setTarget(r, triangle);
+	let t = (e2x * qx + e2y * qy + e2z * qz) * invDet;
+
+	// trojuhelnik je za pocatkem paprsku
+	if (t < 0) return;
+
+	ray.setTarget(t, index, u, v);
 }
 
 export function deg2Rad(deg: number): number {
 	return (deg / 180 * Math.PI);
 }
 
-export function sortTriangles(items: Triangle[], from: number, n: number, axis: Axis): void {
+// teziste boxu trojuhelniku v ose axis
+export function triangleCentroid(vertices: Float64Array, index: number, axis: Axis): number {
+	let a = vertices[index * 9 + axis];
+	let b = vertices[index * 9 + 3 + axis];
+	let c = vertices[index * 9 + 6 + axis];
+
+	return (Math.min(Math.min(a, b), c) + Math.max(Math.max(a, b), c)) / 2;
+}
+
+// seradi indexy trojuhelniku items[from..from + n - 1] podle teziste v ose axis
+export function sortTriangles(items: Int32Array, vertices: Float64Array, from: number, n: number, axis: Axis): void {
 	let beg: number[] = new Array(SORT_MAX_LVLS);
 	let end: number[] = new Array(SORT_MAX_LVLS);
 	beg[0] = 0;
@@ -71,9 +88,10 @@ export function sortTriangles(items: Triangle[], from: number, n: number, axis: 
 		
 		if (L < R) {
 			let piv = items[from + L];
+			let pivValue = triangleCentroid(vertices, piv, axis);
 			
 			while (L < R) {
-				while (items[from + R].bounds().centroid().axis(axis) >= piv.bounds().centroid().axis(axis) && L < R) {
+				while (triangleCentroid(vertices, items[from + R], axis) >= pivValue && L < R) {
 					R--;
 				}
 
@@ -81,7 +99,7 @@ export function sortTriangles(items: Triangle[], from: number, n: number, axis: 
 					items[from + L++] = items[from + R];
 				}
 
-				while (items[from + L].bounds().centroid().axis(axis) <= piv.bounds().centroid().axis(axis) && L < R) {
+				while (triangleCentroid(vertices, items[from + L], axis) <= pivValue && L < R) {
 					L++;
 				}
 
@@ -110,25 +128,36 @@ export function sortTriangles(items: Triangle[], from: number, n: number, axis: 
 	}
 }
 
-// vzdalenost vstupu paprsku do boxu (zaporna, pokud pocatek lezi uvnitr), Infinity pokud box mine
-// nebo box zacina dal nez dosavadni nejblizsi zasah (ray.distance)
-export function rayBoxIntersection(ray: Ray, aabb: AABB): number {
-	let l1 = (aabb.minVec.x - ray.origin.x) * ray.inverted.x;
-	let l2 = (aabb.maxVec.x - ray.origin.x) * ray.inverted.x;
+/**
+ * Vzdalenost vstupu paprsku do boxu (zaporna, pokud pocatek lezi uvnitr), Infinity pokud box mine
+ * nebo box zacina dal nez maxDistance (dosavadni nejblizsi zasah). Paprsek se predava po slozkach,
+ * aby se pri pruchodu BVH nacital jen jednou.
+ *
+ * @param  bounds      Boxy po 6 cislech (min x, y, z, max x, y, z)
+ * @param  index       Index boxu
+ * @param  ox          Pocatek paprsku
+ * @param  ix          Invertovany smer paprsku (1 / smer)
+ * @param  maxDistance Vzdalenost, za kterou uz box nezajima
+ */
+export function rayBoxIntersection(bounds: Float64Array, index: number, ox: number, oy: number, oz: number,
+	ix: number, iy: number, iz: number, maxDistance: number): number {
+	let i = index * 6;
+	let l1 = (bounds[i] - ox) * ix;
+	let l2 = (bounds[i + 3] - ox) * ix;
 	let lmin = Math.min(l1,l2);
 	let lmax = Math.max(l1,l2);
 
-	l1 = (aabb.minVec.y - ray.origin.y) * ray.inverted.y;
-	l2 = (aabb.maxVec.y - ray.origin.y) * ray.inverted.y;
+	l1 = (bounds[i + 1] - oy) * iy;
+	l2 = (bounds[i + 4] - oy) * iy;
 	lmin = Math.max(Math.min(l1,l2), lmin);
 	lmax = Math.min(Math.max(l1,l2), lmax);
 	
-	l1 = (aabb.minVec.z - ray.origin.z) * ray.inverted.z;
-	l2 = (aabb.maxVec.z - ray.origin.z) * ray.inverted.z;
+	l1 = (bounds[i + 2] - oz) * iz;
+	l2 = (bounds[i + 5] - oz) * iz;
 	lmin = Math.max(Math.min(l1,l2), lmin);
 	lmax = Math.min(Math.max(l1,l2), lmax);
 
-	if ((lmax >= 0 ) && (lmax >= lmin) && (lmin <= ray.distance)) {
+	if ((lmax >= 0 ) && (lmax >= lmin) && (lmin <= maxDistance)) {
 		return lmin;
 	}
 	else {

@@ -128,15 +128,16 @@ export default class Raytracer {
 		let target = ray.getTarget();
 		let triangle = ray.triangle;
 
-		if (!target || !triangle) {
+		if (!target || triangle < 0) {
 			return new Vector3();
 		}
 
 		// neco jsme trefili, ziskame material zasazeneho objektu
 		let material = this._materials[0];
 		// geometricka normala trojuhelniku urcuje strany povrchu, interpolovana slouzi ke stinovani
-		let geometricNormal = triangle.perFaceNormal.clone();
-		let normal = triangle.normal(target);
+		let mesh = this._bvh.mesh;
+		let geometricNormal = mesh.faceNormal(triangle, new Vector3());
+		let normal = mesh.normal(triangle, ray.u, ray.v, new Vector3());
 		// paprsek prichazi zevnitr objektu, obe normaly otocime proti paprsku
 		let inside = geometricNormal.dotProduct(ray.direction) > 0;
 

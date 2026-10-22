@@ -26,6 +26,10 @@ Podklad pro další práci (i pro Clauda). Spuštění: „přečti `PLAN.md` a 
   - `src/scene.ts`: popis scény jako obyčejná data a `createRaytracer()`, který si v každém workeru
     sám načte PLY a postaví geometrii a BVH.
   - `src/raytracer.ts`: výpočet paprsků (Phong, sklo podle Fresnela, odrazy okolí, stíny).
+  - Scéna je v plochých polích (od bodu 5a): `src/mesh.ts` (`Float64Array` vrcholů a normál vrcholů po 9
+    číslech a normál ploch po 3 číslech na trojúhelník), `src/bvh.ts` (`_bounds` 6 čísel na uzel,
+    `_items` 2 čísla na uzel: list `(first, count)`, vnitřní uzel `(left, -1)`). `Geometry` postaví `Mesh`
+    z PLY, `BVH` ho při stavbě přeřadí tak, aby listy měly souvislé úseky trojúhelníků.
   - Cubemapa (6× 2048², ~96 MB) se dekóduje jednou v hlavním vlákně a sdílí se přes `SharedArrayBuffer`.
     Vyžaduje to hlavičky COOP/COEP. Dev server je posílá, pro produkci viz README.
 - URL parametry: `?phong=0` zapne průhledný materiál, `?threads=N` nastaví počet workerů (výchozí min(jádra, 4)).
@@ -39,6 +43,7 @@ Podklad pro další práci (i pro Clauda). Spuštění: „přečti `PLAN.md` a 
 | 3 | cubemapa jako pole pixelů | 1,70 s + 1,1 s | 8,87 s + 1,1 s |
 | 1 | Web Workery (4) | **1,96 s celkem** | **3,85 s celkem** |
 | 4 | průchod BVH (ořezávání, bližší potomek napřed, anyHit stínů, zásobník) | paprsky −36 % | paprsky −27 % |
+| 5a | plochá pole, Möller–Trumbore, méně alokací | 1,05 → 0,57 s celkem | 1,75 → 0,73 s celkem |
 
 Měřeno v 320×240 na 16vláknovém stroji. Doma budou čísla jiná, porovnávej jen relativně
 na stejném stroji (nejdřív si změř výchozí stav pro aktuální `HEAD`).
@@ -46,6 +51,12 @@ na stejném stroji (nejdřív si změř výchozí stav pro aktuální `HEAD`).
 Bod 4 měřen na jiném stroji (20 vláken, 4 workery): Phong 1,13 → 1,06 s celkem (paprsky 0,28 → 0,18 s),
 sklo 2,27 → 1,95 s (paprsky 1,42 → 1,04 s). Obraz pixelově shodný. Počty testů (Phong, 320×240):
 boxy 7,2 M → 5,3 M, trojúhelníky 2,9 M → 1,9 M. Vlastní zásobník místo rekurze přidal jen ~3–5 %.
+
+Bod 5a (stejný stroj jako bod 4): Phong paprsky 0,18 → 0,05 s, příprava ve workerech 0,8 → 0,43 s;
+sklo paprsky 0,86 → 0,22 s. Plochá pole samotná obraz nemění (ověřeno doslovným přepisem starého průsečíku),
+Möller–Trumbore mění 0,4–0,5 % pixelů o 1. Přepis stínování (`_shade`, `_lighting`) na skaláry se nedělal,
+bere už jen ~5–8 % času. Pozn.: harness v Node (bez cubemapy) ukáže rozdíly menší než prohlížeč, protože
+drobné odchylky směru se projeví až s barvou okolí.
 
 Po bodu 1 je úzkým hrdlem **příprava scény ve workerech** (~1,8 s): každý worker parsuje
 PLY a staví BVH sám a souběžné stavby se brzdí. Proto víc než 4 workery zpomalují
@@ -80,22 +91,13 @@ node tools/bench/compare.mjs /tmp/rt-bench/pred-glass.bin /tmp/rt-bench/po-glass
 
 ### Bod 5: méně alokací, ploché pole dat, sdílená scéna
 
-Největší bod, doporučuju rozdělit na dva commity.
-
-**5a: ploché datové struktury a Möller–Trumbore**
-- Každá operace `Vector3` (`plus`, `minus`, `mul`…) vytváří nový objekt, na jeden paprsek desítky.
-  `_oper` navíc vrací pole `[x, y, z]`, takže i `*Apply` alokuje.
-- Trojúhelníky do `Float64Array` (vrcholy 9 čísel, normály vrcholů 9 čísel, normála plochy 3 čísla).
-  BVH uzly do typovaných polí (box 6 čísel, from/to nebo index potomků).
-- Průsečík paprsku s trojúhelníkem přepsat na Möller–Trumbore nad poli, bez alokací.
-  Dnešní `rayTriangleIntersection97` alokuje ~6 vektorů na test.
-- Horké cesty (`traverse`, průsečíky, `Triangle.normal`, stínování) psát se skalárními proměnnými nebo
-  s předalokovanými pracovními vektory.
-- Pozor: změna pořadí operací → drobné odchylky pixelů jsou přípustné (viz pravidla).
+Bod 5a je hotový (viz výše), zbývá 5b.
 
 **5b: scéna se postaví jednou a sdílí**
 - S plochými poli jde PLY parse + geometrii + BVH udělat **jednou** (v hlavním vlákně nebo v prvním workeru)
   a pole předat ostatním workerům přes `SharedArrayBuffer` (stejně jako cubemapu v `src/cubemap.ts`).
+  Sdílí se pole `Mesh` (`vertices`, `normals`, `faceNormals`) a BVH (`_bounds`, `_items`). BVH potřebuje
+  druhý způsob vzniku z hotových polí (bez stavby), zásobník pro průchod (`_stack`) si každý worker alokuje sám.
 - Tím zmizí ~1,8 s přípravy v každém workeru i ~60 MB paměti na worker. Pak zvedni výchozí
   `threadsCount` v `src/render.ts` (dnes min(jádra, 4), komentář vysvětluje proč) a změř 4/8/16 workerů
   (`QUERY="threads=8" tools/bench/bench.sh ...`).
@@ -104,8 +106,8 @@ Největší bod, doporučuju rozdělit na dva commity.
 ### Bod 6: stavba BVH
 
 Soubory: `src/bvh.ts`, `src/math.ts` (`sortTriangles`).
-- `sortTriangles` (quicksort s prvním prvkem jako pivotem) při **každém porovnání** volá
-  `bounds().centroid()`, takže alokuje nový vektor. Těžiště spočítat jednou předem do pole.
+- `sortTriangles` (quicksort s prvním prvkem jako pivotem) řadí pole indexů a při **každém porovnání**
+  počítá těžiště přes `triangleCentroid` (bez alokace od bodu 5a, ale 4× min/max). Těžiště spočítat jednou předem do pole.
 - Každý uzel se celý řadí, přitom stačí rozdělit podle mediánu (quickselect / nth_element): O(n log n) místo O(n log² n).
 - Pozor: quicksort s prvním pivotem je na už seřazeném vstupu kvadratický.
 - Volitelně SAH (surface area heuristic) místo dělení v půlce: lepší strom, rychlejší průchod.
