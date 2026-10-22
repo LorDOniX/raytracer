@@ -23,8 +23,9 @@ Podklad pro další práci (i pro Clauda). Spuštění: „přečti `PLAN.md` a 
 - Render běží ve Web Workerech:
   - `src/render.ts`: řízení v hlavním vlákně. Spustí workery, rozdělí obraz na pruhy po 8 řádcích a vykresluje hotové pruhy.
   - `src/render.worker.ts`: worker; zprávy jsou popsané v `src/messages.ts`.
-  - `src/scene.ts`: popis scény jako obyčejná data a `createRaytracer()`, který si v každém workeru
-    sám načte PLY a postaví geometrii a BVH.
+  - `src/scene.ts`: popis scény jako obyčejná data, `buildScene()` (načte PLY, postaví geometrii a BVH,
+    běží jednou v prvním workeru, zpráva `build`) a `createRaytracer()` nad hotovými daty (`BVHData`, zpráva `init`).
+    Pole scény jsou při cross-origin isolation ve `SharedArrayBuffer` (`src/shared.ts`), jinak se kopírují.
   - `src/raytracer.ts`: výpočet paprsků (Phong, sklo podle Fresnela, odrazy okolí, stíny).
   - Scéna je v plochých polích (od bodu 5a): `src/mesh.ts` (`Float64Array` vrcholů a normál vrcholů po 9
     číslech a normál ploch po 3 číslech na trojúhelník), `src/bvh.ts` (`_bounds` 6 čísel na uzel,
@@ -32,7 +33,7 @@ Podklad pro další práci (i pro Clauda). Spuštění: „přečti `PLAN.md` a 
     z PLY, `BVH` ho při stavbě přeřadí tak, aby listy měly souvislé úseky trojúhelníků.
   - Cubemapa (6× 2048², ~96 MB) se dekóduje jednou v hlavním vlákně a sdílí se přes `SharedArrayBuffer`.
     Vyžaduje to hlavičky COOP/COEP. Dev server je posílá, pro produkci viz README.
-- URL parametry: `?phong=0` zapne průhledný materiál, `?threads=N` nastaví počet workerů (výchozí min(jádra, 4)).
+- URL parametry: `?phong=0` zapne průhledný materiál, `?threads=N` nastaví počet workerů (výchozí min(jádra, 8)).
 
 ### Hotové body
 
@@ -44,6 +45,7 @@ Podklad pro další práci (i pro Clauda). Spuštění: „přečti `PLAN.md` a 
 | 1 | Web Workery (4) | **1,96 s celkem** | **3,85 s celkem** |
 | 4 | průchod BVH (ořezávání, bližší potomek napřed, anyHit stínů, zásobník) | paprsky −36 % | paprsky −27 % |
 | 5a | plochá pole, Möller–Trumbore, méně alokací | 1,05 → 0,57 s celkem | 1,75 → 0,73 s celkem |
+| 5b | scéna se staví jednou a sdílí | 0,53 → 0,47 s (4 workery) | 0,67 → 0,60 s (4 workery) |
 
 Měřeno v 320×240 na 16vláknovém stroji. Doma budou čísla jiná, porovnávej jen relativně
 na stejném stroji (nejdřív si změř výchozí stav pro aktuální `HEAD`).
@@ -58,9 +60,21 @@ Möller–Trumbore mění 0,4–0,5 % pixelů o 1. Přepis stínování (`_shade
 bere už jen ~5–8 % času. Pozn.: harness v Node (bez cubemapy) ukáže rozdíly menší než prohlížeč, protože
 drobné odchylky směru se projeví až s barvou okolí.
 
-Po bodu 1 je úzkým hrdlem **příprava scény ve workerech** (~1,8 s): každý worker parsuje
-PLY a staví BVH sám a souběžné stavby se brzdí. Proto víc než 4 workery zpomalují
-(16 workerů: Phong 4,45 s). Samotné počítání paprsků je už rychlé (Phong 0,3 s, sklo 1,5 s při 8 workerech).
+Bod 5b (stejný stroj, 320×240): souběžné stavby se tu brzdily méně, než se čekalo (příprava ve workeru
+0,43 s při 4 workerech, jedna stavba 0,35 s), takže při 4 workerech je zisk malý. Velký je při víc workerech:
+
+| workery | Phong před → po | Sklo před → po |
+|---|---|---|
+| 4 | 0,53 → 0,47 s | 0,67 → 0,60 s |
+| 8 | 0,73 → 0,49 s | 0,83 → 0,58 s |
+| 16 | 1,27 → 0,55 s | 1,22 → 0,61 s |
+
+V 640×480 (po): 4 workery Phong 0,56 s / sklo 1,10 s, 8 workerů 0,54 / 0,88 s, 16 workerů 0,62 / 0,86 s.
+Každý worker musí zahřát JIT a malý obraz má málo pruhů, proto výchozí počet min(jádra, 8).
+Bez COOP/COEP render funguje (varování v konzoli, obraz shodný), jen je pomalejší kvůli kopiím.
+
+Teď je úzkým hrdlem **příprava scény** (~0,35 s z ~0,47 s celkem u Phongu): načtení a parsování PLY
+a stavba BVH v prvním workeru. Na stavbu BVH míří bod 6.
 
 ## Měření
 
@@ -89,20 +103,6 @@ node tools/bench/compare.mjs /tmp/rt-bench/pred-glass.bin /tmp/rt-bench/po-glass
 
 ## Zbývající body
 
-### Bod 5: méně alokací, ploché pole dat, sdílená scéna
-
-Bod 5a je hotový (viz výše), zbývá 5b.
-
-**5b: scéna se postaví jednou a sdílí**
-- S plochými poli jde PLY parse + geometrii + BVH udělat **jednou** (v hlavním vlákně nebo v prvním workeru)
-  a pole předat ostatním workerům přes `SharedArrayBuffer` (stejně jako cubemapu v `src/cubemap.ts`).
-  Sdílí se pole `Mesh` (`vertices`, `normals`, `faceNormals`) a BVH (`_bounds`, `_items`). BVH potřebuje
-  druhý způsob vzniku z hotových polí (bez stavby), zásobník pro průchod (`_stack`) si každý worker alokuje sám.
-- Tím zmizí ~1,8 s přípravy v každém workeru i ~60 MB paměti na worker. Pak zvedni výchozí
-  `threadsCount` v `src/render.ts` (dnes min(jádra, 4), komentář vysvětluje proč) a změř 4/8/16 workerů
-  (`QUERY="threads=8" tools/bench/bench.sh ...`).
-- Bez COOP/COEP (`crossOriginIsolated == false`) se pole zkopírují. Zachovej stejné chování jako u cubemapy (varování v konzoli).
-
 ### Bod 6: stavba BVH
 
 Soubory: `src/bvh.ts`, `src/math.ts` (`sortTriangles`).
@@ -112,8 +112,9 @@ Soubory: `src/bvh.ts`, `src/math.ts` (`sortTriangles`).
 - Pozor: quicksort s prvním pivotem je na už seřazeném vstupu kvadratický.
 - Volitelně SAH (surface area heuristic) místo dělení v půlce: lepší strom, rychlejší průchod.
   Obraz by měl zůstat stejný, změní se jen strom.
-- Měř hlavně přípravu (`LOGS=1` → „Pre render time“). Ta bude po bodu 5b jen jednou, takže zrychlení
-  bodu 6 je pak vidět přímo na celkovém čase.
+- Měř hlavně přípravu (`LOGS=1` → „Pre render time“). Od bodu 5b běží jen jednou, takže zrychlení
+  bodu 6 je vidět přímo na celkovém čase. Rozpad přípravy (načtení PLY / normály / BVH) zatím v logu není,
+  případně ho doplň (worker 0 loguje do konzole, `cdp.mjs` ale zachytí jen konzoli stránky).
 
 ### Bod 7: antialiasing
 

@@ -161,7 +161,7 @@ export default class Geometry {
 
 		console.log(`Normals time ${((Date.now() - time) / 1000).toFixed(2)}s`);
 
-		return new Mesh(vertices, normals, faceNormals);
+		return new Mesh({ vertices, normals, faceNormals });
 	}
 }
 

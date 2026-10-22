@@ -1,5 +1,6 @@
 import type { SceneConfig } from "./scene";
 import type { CubemapData } from "./cubemap";
+import type { BVHData } from "./bvh";
 
 // obdelnik obrazku v pixelech
 export interface Tile {
@@ -11,13 +12,16 @@ export interface Tile {
 
 // zpravy hlavni vlakno -> worker
 export type WorkerRequest =
-	| { type: "init"; config: SceneConfig; log: boolean }
+	// nacte model a postavi BVH, posila se jen jednomu workeru, odpoved "scene"
+	| { type: "build"; config: SceneConfig }
+	| { type: "init"; config: SceneConfig; scene: BVHData; log: boolean }
 	// posila se az po "ready", pred prvnim pruhem
 	| { type: "cubemap"; cubemap: CubemapData | null }
 	| { type: "tile"; tile: Tile };
 
 // zpravy worker -> hlavni vlakno
 export type WorkerResponse =
+	| { type: "scene"; scene: BVHData }
 	| { type: "ready" }
 	| { type: "tile"; tile: Tile; pixels: Uint8ClampedArray<ArrayBuffer> }
 	| { type: "error"; message: string };

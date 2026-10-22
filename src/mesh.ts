@@ -1,4 +1,12 @@
 import type Vector3 from "./vector3";
+import { createFloat64Array } from "./shared";
+
+// pole trojuhelniku jako obycejna data, daji se poslat workerum
+export interface MeshData {
+	vertices: Float64Array;
+	normals: Float64Array;
+	faceNormals: Float64Array;
+}
 
 /**
  * Trojuhelniky sceny v plochych polich (bez objektu na trojuhelnik, pole jde predat workerum).
@@ -9,10 +17,18 @@ export default class Mesh {
 	private _normals: Float64Array;
 	private _faceNormals: Float64Array;
 
-	constructor(vertices: Float64Array, normals: Float64Array, faceNormals: Float64Array) {
-		this._vertices = vertices;
-		this._normals = normals;
-		this._faceNormals = faceNormals;
+	constructor(data: MeshData) {
+		this._vertices = data.vertices;
+		this._normals = data.normals;
+		this._faceNormals = data.faceNormals;
+	}
+
+	get data(): MeshData {
+		return {
+			vertices: this._vertices,
+			normals: this._normals,
+			faceNormals: this._faceNormals
+		};
 	}
 
 	get count(): number {
@@ -31,12 +47,13 @@ export default class Mesh {
 		return this._faceNormals;
 	}
 
-	// novy mesh s trojuhelniky v poradi order (order[i] je puvodni index i-teho trojuhelniku)
+	// novy mesh s trojuhelniky v poradi order (order[i] je puvodni index i-teho trojuhelniku),
+	// pole jsou pri cross-origin isolation sdilena
 	reorder(order: ArrayLike<number>): Mesh {
 		let count = order.length;
-		let vertices = new Float64Array(count * 9);
-		let normals = new Float64Array(count * 9);
-		let faceNormals = new Float64Array(count * 3);
+		let vertices = createFloat64Array(count * 9);
+		let normals = createFloat64Array(count * 9);
+		let faceNormals = createFloat64Array(count * 3);
 
 		for (let i = 0; i < count; i++) {
 			let from = order[i];
@@ -46,7 +63,7 @@ export default class Mesh {
 			faceNormals.set(this._faceNormals.subarray(from * 3, from * 3 + 3), i * 3);
 		}
 
-		return new Mesh(vertices, normals, faceNormals);
+		return new Mesh({ vertices, normals, faceNormals });
 	}
 
 	// geometricka normala trojuhelniku do out

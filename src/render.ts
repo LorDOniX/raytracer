@@ -2,6 +2,7 @@ import Graphics from "./graphics";
 import Cubemap from "./cubemap";
 import type { CubemapData } from "./cubemap";
 import type { SceneConfig } from "./scene";
+import type { BVHData } from "./bvh";
 import type { Tile, WorkerRequest, WorkerResponse } from "./messages";
 
 export interface RenderOptions {
@@ -20,8 +21,9 @@ export default class Render {
 	constructor(config: SceneConfig, opts?: Partial<RenderOptions>) {
 		this._config = config;
 		this._opts = Object.assign({
-			// kazdy worker si sam stavi geometrii a BVH (~60 MB, ~1.5 s), vic workeru se pri tom brzdi
-			threadsCount: Math.min(navigator.hardwareConcurrency || 4, 4),
+			// scena se stavi jednou a sdili, kazdy dalsi worker stoji jen start a zahrati JIT,
+			// pri malem obrazku se vic nez 8 workeru nevyplati
+			threadsCount: Math.min(navigator.hardwareConcurrency || 4, 8),
 			tileHeight: 8,
 			startTime: 0
 		}, opts);
@@ -39,11 +41,18 @@ export default class Render {
 		let workers = Array.from({ length: threads }, () => new Worker(new URL("./render.worker.ts", import.meta.url), { type: "module" }));
 
 		try {
-			// kazdy worker si nacte model a postavi BVH, mezitim se dekoduje pozadi
-			let [cubemap] = await Promise.all([
+			if (!crossOriginIsolated) {
+				console.warn("Cross-origin isolation is not enabled (COOP/COEP headers), scene and cubemap are copied into every worker");
+			}
+
+			// prvni worker nacte model a postavi BVH, mezitim se dekoduje pozadi
+			let [cubemap, scene] = await Promise.all([
 				this._loadCubemap(),
-				...workers.map((worker, ind) => this._init(worker, ind == 0))
+				this._build(workers[0])
 			]);
+
+			// hotovou scenu dostanou vsechny workery (pri cross-origin isolation sdilenou)
+			await Promise.all(workers.map((worker, ind) => this._init(worker, scene, ind == 0)));
 
 			workers.forEach(worker => this._send(worker, { type: "cubemap", cubemap }));
 
@@ -67,26 +76,35 @@ export default class Render {
 			return null;
 		}
 
-		if (!crossOriginIsolated) {
-			console.warn("Cross-origin isolation is not enabled (COOP/COEP headers), cubemap is copied into every worker");
-		}
-
 		return Cubemap.load();
 	}
 
-	private _init(worker: Worker, log: boolean): Promise<void> {
+	private async _build(worker: Worker): Promise<BVHData> {
+		let response = await this._request(worker, { type: "build", config: this._config }, "scene");
+
+		return response.scene;
+	}
+
+	private async _init(worker: Worker, scene: BVHData, log: boolean): Promise<void> {
+		await this._request(worker, { type: "init", config: this._config, scene, log }, "ready");
+	}
+
+	// posle workeru zpravu a pocka na odpoved daneho typu
+	private _request<T extends WorkerResponse["type"]>(worker: Worker, message: WorkerRequest, type: T): Promise<Extract<WorkerResponse, { type: T }>> {
 		return new Promise((resolve, reject) => {
 			worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
-				if (e.data.type == "ready") {
-					resolve();
+				let response = e.data;
+
+				if (response.type == type) {
+					resolve(response as Extract<WorkerResponse, { type: T }>);
 				}
-				else if (e.data.type == "error") {
-					reject(new Error(e.data.message));
+				else if (response.type == "error") {
+					reject(new Error(response.message));
 				}
 			};
 			worker.onerror = e => reject(new Error(e.message));
 
-			this._send(worker, { type: "init", config: this._config, log });
+			this._send(worker, message);
 		});
 	}
 

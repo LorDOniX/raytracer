@@ -1,67 +1,61 @@
 import * as math from "./math";
+import Mesh from "./mesh";
+import { createFloat64Array, createInt32Array } from "./shared";
+import type { MeshData } from "./mesh";
 import type { Axis } from "./vector3";
 import type Ray from "./ray";
-import type Mesh from "./mesh";
 
 export interface BVHOptions {
 	maxLeafItems: number;
 }
 
-export default class BVH {
-	private _opts: BVHOptions;
+// BVH a jeho trojuhelniky jako obycejna data (typovana pole), da se poslat workerum
+export interface BVHData {
 	// trojuhelniky prerazene tak, ze kazdy uzel ma souvisly interval
-	private _mesh: Mesh;
-	private _leafs: number;
-	private _nodes: number;
-	private _maxDepth: number;
+	mesh: MeshData;
 	// boxy uzlu po 6 cislech (min x, y, z, max x, y, z), koren je uzel 0
-	private _bounds: Float64Array;
+	bounds: Float64Array;
 	// uzly po 2 cislech: list (first, count) - trojuhelniky first..first + count - 1,
 	// vnitrni uzel (left, -1) - potomci jsou left a left + 1
+	items: Int32Array;
+	// hloubka nejhlubsiho listu (koren 0)
+	maxDepth: number;
+}
+
+export default class BVH {
+	private _mesh: Mesh;
+	private _bounds: Float64Array;
 	private _items: Int32Array;
 	// zasobnik odlozenych (vzdalenejsich) uzlu pri pruchodu a vzdalenosti vstupu do jejich boxu
 	private _stack: Int32Array;
 	private _stackDistances: Float64Array;
 
-	constructor(mesh: Mesh, opts?: Partial<BVHOptions>) {
-		this._opts = Object.assign({
-			maxLeafItems: 8
-		}, opts);
-		this._leafs = 0;
-		this._nodes = 0;
-		this._maxDepth = 0;
-
-		let count = mesh.count;
-		// poradi trojuhelniku, stavba ho radi po intervalech uzlu
-		let order = new Int32Array(count);
-
-		for (let i = 0; i < count; i++) {
-			order[i] = i;
-		}
-
-		// uzlu je nejvys 2 * count - 1, nevyuzity konec se pak oreze
-		let maxNodes = Math.max(2 * count - 1, 1);
-
-		this._bounds = new Float64Array(maxNodes * 6);
-		this._items = new Int32Array(maxNodes * 2);
-
-		// zaklad zasobnikova metoda
-		this._nodes++;
-		this._buildTree(0, order, mesh.vertices, 0, count - 1, 0, 2);
-
-		this._bounds = this._bounds.slice(0, this._nodes * 6);
-		this._items = this._items.slice(0, this._nodes * 2);
-		this._mesh = mesh.reorder(order);
+	constructor(data: BVHData) {
+		this._mesh = new Mesh(data.mesh);
+		this._bounds = data.bounds;
+		this._items = data.items;
 
 		// na kazde urovni se odlozi nejvys jeden uzel
-		this._stack = new Int32Array(this._maxDepth + 1);
-		this._stackDistances = new Float64Array(this._maxDepth + 1);
+		this._stack = new Int32Array(data.maxDepth + 1);
+		this._stackDistances = new Float64Array(data.maxDepth + 1);
+	}
 
-		this._showInfo();
+	// postavi strom nad trojuhelniky meshe
+	static build(mesh: Mesh, opts?: Partial<BVHOptions>): BVH {
+		return new BVH(new BVHBuilder(mesh, opts).data);
 	}
 
 	get mesh(): Mesh {
 		return this._mesh;
+	}
+
+	get data(): BVHData {
+		return {
+			mesh: this._mesh.data,
+			bounds: this._bounds,
+			items: this._items,
+			maxDepth: this._stack.length - 1
+		};
 	}
 
 	traverse(ray: Ray): void {
@@ -146,6 +140,63 @@ export default class BVH {
 			}
 		}
 	}
+}
+
+// stavba stromu, deleni v polovine podle teziste v ose, ktera se strida
+class BVHBuilder {
+	private _opts: BVHOptions;
+	private _leafs: number;
+	private _nodes: number;
+	private _maxDepth: number;
+	private _bounds: Float64Array;
+	private _items: Int32Array;
+	private _data: BVHData;
+
+	constructor(mesh: Mesh, opts?: Partial<BVHOptions>) {
+		this._opts = Object.assign({
+			maxLeafItems: 8
+		}, opts);
+		this._leafs = 0;
+		this._nodes = 0;
+		this._maxDepth = 0;
+
+		let count = mesh.count;
+		// poradi trojuhelniku, stavba ho radi po intervalech uzlu
+		let order = new Int32Array(count);
+
+		for (let i = 0; i < count; i++) {
+			order[i] = i;
+		}
+
+		// uzlu je nejvys 2 * count - 1, nevyuzity konec se pak oreze
+		let maxNodes = Math.max(2 * count - 1, 1);
+
+		this._bounds = new Float64Array(maxNodes * 6);
+		this._items = new Int32Array(maxNodes * 2);
+
+		// zaklad zasobnikova metoda
+		this._nodes++;
+		this._buildTree(0, order, mesh.vertices, 0, count - 1, 0, 2);
+
+		// vysledna pole jsou pri cross-origin isolation sdilena
+		let bounds = createFloat64Array(this._nodes * 6);
+		let items = createInt32Array(this._nodes * 2);
+
+		bounds.set(this._bounds.subarray(0, bounds.length));
+		items.set(this._items.subarray(0, items.length));
+		this._data = {
+			mesh: mesh.reorder(order).data,
+			bounds,
+			items,
+			maxDepth: this._maxDepth
+		};
+
+		this._showInfo();
+	}
+
+	get data(): BVHData {
+		return this._data;
+	}
 
 	// uzel node pro trojuhelniky order[from..to]
 	private _buildTree(node: number, order: Int32Array, vertices: Float64Array, from: number, to: number, depth: number, axis: Axis): void {
@@ -206,7 +257,7 @@ export default class BVH {
 		console.log(`BVH`);
 		console.log(`Leafs      : ${ this._leafs }`);
 		console.log(`Nodes      : ${ this._nodes }`);
-		console.log(`Items      : ${ this._mesh.count }`);
+		console.log(`Items      : ${ this._data.mesh.faceNormals.length / 3 }`);
 		console.log(`Max depth  : ${ this._maxDepth }`);
 		console.log(`Leaf items : ${ this._opts.maxLeafItems }`);
 		console.log(`Bounds     : (${ b.slice(0, 3).join(", ") }) x (${ b.slice(3).join(", ") })`);

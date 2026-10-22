@@ -1,4 +1,4 @@
-import { createRaytracer } from "./scene";
+import { buildScene, createRaytracer } from "./scene";
 import Cubemap from "./cubemap";
 import type Raytracer from "./raytracer";
 import type { WorkerRequest, WorkerResponse } from "./messages";
@@ -14,13 +14,17 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
 
 	try {
 		switch (message.type) {
+			case "build":
+				send({ type: "scene", scene: await buildScene(message.config) });
+				break;
+
 			case "init":
 				// informace o scene vypisuje jen prvni worker
 				if (!message.log) {
 					console.log = () => {};
 				}
 
-				raytracer = await createRaytracer(message.config);
+				raytracer = createRaytracer(message.config, message.scene);
 				send({ type: "ready" });
 				break;
 
