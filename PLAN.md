@@ -139,7 +139,10 @@ Všechny body plánu jsou hotové.
   neviditelný a pozadí navazuje). Absorpce podle vzdálenosti (Beer–Lambert) se zkoušela, na malém hrbolatém
   modelu dělala jen barevný šum, takže se nepoužívá. Větší `maxDepth` ani okolí místo černé na konci hloubky
   obraz skoro nezměnily. Sklo stíní jako neprůhledné (stínové paprsky jím neprocházejí).
-- Ambientní složka světel je nulová (`Light._ambiente`), stíny jsou úplně černé.
+- ~~Ambientní složka světel je nulová (`Light._ambiente`), stíny jsou úplně černé.~~ Prověřeno, nedělá se:
+  zastíněná místa králíka osvětluje odraz okolí (odrazivost 0,8), tmavých pixelů na něm bylo jen 23 z 76 800.
+  Ambient světel 0,5× a 1× jejich difuzní barvy jen rovnoměrně zesvětlil celého králíka (o 13, resp. 26 úrovní
+  na 29 % pixelů) a ubral kontrast. Sklo má ambient 0 záměrně. Stíny na zemi jsou součástí fotky v cubemapě.
 - `less/main.less`: canvas má `min-width: 1280px`, takže se malý obraz rozmaže. Zvážit `image-rendering: pixelated`.
 - PLY parser umí jen ASCII (binární formát hlásí chybou).
 - `npm audit` hlásí `braces` uvnitř `webpack-dev-server` (jen vývojová závislost, oprava zatím jen downgradem).
