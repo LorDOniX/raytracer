@@ -146,6 +146,10 @@ Všechny body plánu jsou hotové.
 - ~~`less/main.less`: canvas má `min-width: 1280px`, takže se malý obraz rozmaže.~~ Hotovo: `image-rendering: pixelated`
   (160 → 1280 px je celočíselné zvětšení 8×, pixely jsou stejně velké). Zbývá: `min-width: 1280px` na úzkém
   displeji vede k vodorovnému posuvníku.
-- PLY parser umí jen ASCII (binární formát hlásí chybou).
+- ~~PLY parser umí jen ASCII (binární formát hlásí chybou).~~ Hotovo: `binary_little_endian` i `binary_big_endian`,
+  všechny typy včetně nových názvů (`float32`, `uint8`…). Ověřeno převodem králíka (double LE dává stejnou scénu
+  jako ASCII, float32 BE odpovídá ASCII zaokrouhlenému na float32). Načtení: ASCII ~55 ms (beze změny),
+  binární 10–30 ms a s float32 poloviční soubor (1,6 MB místo 3 MB). Výchozí model zůstal ASCII; převod
+  na binární by ušetřil ~30–40 ms přípravy, ale souřadnice by se zaokrouhlily na float32 (obraz by se nepatrně změnil).
 - `npm audit` hlásí `braces` uvnitř `webpack-dev-server` (jen vývojová závislost, oprava zatím jen downgradem).
 - npm blokuje `postinstall` balíku `esbuild`. Nevadí to, binárka přichází jako volitelná závislost.
